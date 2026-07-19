@@ -1,6 +1,6 @@
 # Kydax Sound
 
-Home Assistant custom integration (domain `kydax_sound`, in this repo still named `kydax_symetrix` on GitHub) controlling restaurant audio: a Symetrix Jupiter 8 DSP appliance (volumes, mutes, presets) and, planned, a "MusiSelect" source device (documentation to come from the user). Sibling of **kydax_light** (`C:\Workspace\kydax_light`, github.com/aldrouin/kydax_light) — that repo is the reference implementation; when in doubt, copy its patterns.
+Home Assistant custom integration (domain `kydax_sound`, GitHub repo `aldrouin/kydax_sound`; the local folder is still `C:\Workspace\kydax_symetrix`) controlling restaurant audio: a Symetrix Jupiter 8 DSP appliance (volumes, mutes, presets) and, planned, a "MusiSelect" source device (documentation to come from the user). Sibling of **kydax_light** (`C:\Workspace\kydax_light`, github.com/aldrouin/kydax_light) — that repo is the reference implementation; when in doubt, copy its patterns.
 
 ## Purpose / background
 

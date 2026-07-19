@@ -6,10 +6,10 @@
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/aldrouin/kydax_symetrix",
+  "documentation": "https://github.com/aldrouin/kydax_sound",
   "integration_type": "hub",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/aldrouin/kydax_symetrix/issues",
+  "issue_tracker": "https://github.com/aldrouin/kydax_sound/issues",
   "requirements": [],
   "version": "0.1.0"
 }

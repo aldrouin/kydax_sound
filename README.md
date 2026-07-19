@@ -6,4 +6,4 @@ Custom Home Assistant integration for restaurant audio: a Symetrix Jupiter DSP a
 
 ## Install (HACS custom repository)
 
-HACS → ⋮ → Custom repositories → `https://github.com/aldrouin/kydax_symetrix`, type **Integration** → download, restart HA, then Settings → Devices & Services → Add integration → Kydax Sound.
+HACS → ⋮ → Custom repositories → `https://github.com/aldrouin/kydax_sound`, type **Integration** → download, restart HA, then Settings → Devices & Services → Add integration → Kydax Sound.
