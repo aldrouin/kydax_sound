@@ -5,12 +5,20 @@ DOMAIN = "kydax_sound"
 # Symetrix Jupiter control protocol default UDP port (see PROTOCOL.md)
 DEFAULT_PORT = 48630
 
+# MusiSelect music source device (see PROTOCOL.md); port is static in
+# practice but kept configurable
+CONF_MUSISELECT_HOST = "musiselect_host"
+CONF_MUSISELECT_PORT = "musiselect_port"
+DEFAULT_MUSISELECT_PORT = 2325
+
 # how often to poll the appliance for current values (seconds)
 POLL_SECONDS = 30
 
 # options keys
+CONF_CHANNELS = "channels"  # [{number: int, name: str, default_pct: int}]
 CONF_PAUSE_GROUPS = "pause_groups"  # [{id, name, channels: [int]}]
 CONF_VOLUME_SCENES = "volume_scenes"  # [{id, name, levels: {"7122": -24.0}}]
+CONF_EVENT_BUTTONS = "event_buttons"  # [{id, name, preset, command, delay}]
 
 # Standard Jupiter volume fader range (PROTOCOL.md). Controller position 0
 # maps to the minimum (OFF) and 65535 to the maximum.
@@ -24,6 +32,11 @@ def db_to_position(db: float) -> int:
     span = FADER_MAX_DB - FADER_MIN_DB
     position = round((db - FADER_MIN_DB) / span * POSITION_MAX)
     return max(0, min(POSITION_MAX, position))
+
+
+def pct_to_position(pct: float) -> int:
+    """Convert a percentage of the fader range to a controller position."""
+    return max(0, min(POSITION_MAX, round(pct / 100 * POSITION_MAX)))
 
 
 def position_to_db(position: int) -> float:

@@ -82,7 +82,8 @@ Notes:
 
 ## Site facts (from the old component)
 
-- Device: Jupiter 8, restaurant "Pacini Marché Central", `10.35.82.22:48630/udp`.
+- Device: Jupiter 8, restaurant "Pacini Marché Central", UDP port 48630
+  (site IP configured in the integration, not recorded here).
 - Zone volume controllers used: 7122, 7128, 7134, 7140, 7146, 7152, 7158,
   7164 (spacing of 6 suggests neighboring controllers per zone strip).
 - Old code capped volume at 70% of range and treated pos 0 as mute.
@@ -95,8 +96,8 @@ Notes:
 
 Known only from the old component — official docs to come:
 
-- UDP to `192.168.234.184:2325` (an older copy of the code used
-  `10.35.82.24`), ASCII payload, e.g. `PACINI diffSpecial 2`.
+- UDP, port 2325 (static in practice; site IP configured in the
+  integration, not recorded here), ASCII payload, e.g. `PACINI diffSpecial 2`.
   `PACINI` appears to be a site/venue prefix. No `<CR>` was appended and
   responses were never read (fire-and-forget), so the response format and
   reliability behavior are unknown.

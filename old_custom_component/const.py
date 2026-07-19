@@ -9,8 +9,7 @@ CHANNELS = [
     [7158, 0.7],
     [7164, 0.7],
 ]
-# Pacini Marche Central UDP 10.35.82.22
-UDP_IP = "10.35.82.22"  # You should replace this with your device's IP address
+UDP_IP = "0.0.0.0"  # You should replace this with your device's IP address
 UDP_PORT = 48630  # And this with the correct port number
 
 PAUSE_CHANNELS = [["SALON_PRIVE", [7152]]]

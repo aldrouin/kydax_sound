@@ -15,7 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import KydaxSoundConfigEntry
-from .const import CONF_PAUSE_GROUPS
+from .const import CONF_EVENT_BUTTONS, CONF_PAUSE_GROUPS
 from .coordinator import KydaxSoundHub
 from .entity import KydaxSoundEntity
 
@@ -25,12 +25,17 @@ async def async_setup_entry(
     entry: KydaxSoundConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up one pause switch per configured group."""
+    """Set up pause switches and event switches."""
     hub = entry.runtime_data
-    async_add_entities(
+    entities: list[SwitchEntity] = [
         KydaxSoundPauseSwitch(hub, group)
         for group in entry.options.get(CONF_PAUSE_GROUPS, [])
+    ]
+    entities.extend(
+        KydaxSoundEventSwitch(hub, event)
+        for event in entry.options.get(CONF_EVENT_BUTTONS, [])
     )
+    async_add_entities(entities)
 
 
 class KydaxSoundPauseSwitch(KydaxSoundEntity, SwitchEntity, RestoreEntity):
@@ -77,3 +82,38 @@ class KydaxSoundPauseSwitch(KydaxSoundEntity, SwitchEntity, RestoreEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._hub.async_set_pause(self._group["id"], False)
+
+
+class KydaxSoundEventSwitch(KydaxSoundEntity, SwitchEntity):
+    """On while the event runs (e.g. birthday music); turn off to stop early.
+
+    Turning on loads the Symetrix preset, waits the settle delay, sends the
+    MusiSelect command, then after the configured duration loads the return
+    preset. Turning off cancels and loads the return preset immediately.
+    """
+
+    _attr_icon = "mdi:party-popper"
+
+    def __init__(self, hub: KydaxSoundHub, event: dict) -> None:
+        super().__init__(hub)
+        self._event = event
+        self._attr_name = event["name"]
+        self._attr_unique_id = f"{hub.entry.entry_id}_event_{event['id']}"
+
+    @property
+    def is_on(self) -> bool:
+        return self._hub.is_event_running(self._event["id"])
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        attrs: dict[str, Any] = {}
+        finishes_at = self._hub.event_finishes_at(self._event["id"])
+        if finishes_at is not None:
+            attrs["finishes_at"] = finishes_at.isoformat()
+        return attrs
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._hub.async_trigger_event(self._event["id"])
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._hub.async_cancel_event(self._event["id"])

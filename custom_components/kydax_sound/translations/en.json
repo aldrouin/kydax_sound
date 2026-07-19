@@ -8,10 +8,26 @@
           "host": "Host",
           "port": "Port"
         }
+      },
+      "musiselect": {
+        "title": "MusiSelect device",
+        "description": "Address of the MusiSelect music source. Leave the host empty if there is none.",
+        "data": {
+          "musiselect_host": "Host",
+          "musiselect_port": "Port"
+        }
+      },
+      "channels": {
+        "title": "Channels",
+        "description": "The volume channels to manage. One per line as \"controller = name = default %\" (e.g. 7122 = Bar = 70). This can be changed later in the options.",
+        "data": {
+          "channels": "Channels"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Could not connect to the appliance"
+      "cannot_connect": "Could not connect to the appliance",
+      "invalid_channel_defs": "Invalid channels: one \"controller = name = default %\" per line, controller between 1 and 10000 (no duplicates), percentage between 0 and 100"
     },
     "abort": {
       "already_configured": "This appliance is already configured"
@@ -22,17 +38,28 @@
       "init": {
         "title": "Kydax Sound",
         "menu_options": {
-          "connection": "Appliance connection",
+          "connection": "Appliance connections",
+          "channels": "Channels",
           "pause_groups": "Pause groups",
-          "volume_scenes": "Volume scenes"
+          "volume_scenes": "Volume scenes",
+          "event_buttons": "Event buttons"
         }
       },
       "connection": {
-        "title": "Appliance connection",
-        "description": "Address of the Symetrix appliance on the network.",
+        "title": "Appliance connections",
+        "description": "Addresses of the Symetrix appliance and the MusiSelect music source (leave the MusiSelect host empty if there is none).",
         "data": {
-          "host": "Host",
-          "port": "Port"
+          "host": "Symetrix host",
+          "port": "Symetrix port",
+          "musiselect_host": "MusiSelect host",
+          "musiselect_port": "MusiSelect port"
+        }
+      },
+      "channels": {
+        "title": "Channels",
+        "description": "One channel per line as \"controller = name = default %\" (e.g. 7122 = Bar = 70). Removing a line removes the channel everywhere.",
+        "data": {
+          "channels": "Channels"
         }
       },
       "pause_groups": {
@@ -48,9 +75,6 @@
         "data": {
           "name": "Name",
           "channels": "Channels"
-        },
-        "data_description": {
-          "channels": "Controller numbers, separated by commas (e.g. 7152, 7158)."
         }
       },
       "edit_pause": {
@@ -64,9 +88,6 @@
         "data": {
           "name": "Name",
           "channels": "Channels"
-        },
-        "data_description": {
-          "channels": "Controller numbers, separated by commas (e.g. 7152, 7158)."
         }
       },
       "remove_pause": {
@@ -114,11 +135,63 @@
         "data": {
           "scenes": "Scenes to remove"
         }
+      },
+      "event_buttons": {
+        "title": "Event buttons",
+        "menu_options": {
+          "add_event": "Add an event button",
+          "edit_event": "Edit an event button",
+          "remove_event": "Remove event buttons"
+        }
+      },
+      "add_event": {
+        "title": "Add an event button",
+        "description": "Turning the event on loads the Symetrix preset, waits for the delay, then sends the MusiSelect command. After the duration (e.g. the song length), the return preset switches back to the normal source. Blocked while a pause is active.",
+        "data": {
+          "name": "Name",
+          "preset": "Symetrix preset",
+          "command": "MusiSelect command",
+          "delay": "Delay between preset and command",
+          "duration": "Duration (song length)",
+          "return_preset": "Return preset"
+        },
+        "data_description": {
+          "command": "For example: PACINI diffSpecial 1"
+        }
+      },
+      "edit_event": {
+        "title": "Edit an event button",
+        "data": {
+          "event": "Event button"
+        }
+      },
+      "edit_event_form": {
+        "title": "Edit an event button",
+        "description": "Turning the event on loads the Symetrix preset, waits for the delay, then sends the MusiSelect command. After the duration (e.g. the song length), the return preset switches back to the normal source. Blocked while a pause is active.",
+        "data": {
+          "name": "Name",
+          "preset": "Symetrix preset",
+          "command": "MusiSelect command",
+          "delay": "Delay between preset and command",
+          "duration": "Duration (song length)",
+          "return_preset": "Return preset"
+        },
+        "data_description": {
+          "command": "For example: PACINI diffSpecial 1"
+        }
+      },
+      "remove_event": {
+        "title": "Remove event buttons",
+        "data": {
+          "events": "Event buttons to remove"
+        }
       }
     },
     "error": {
       "cannot_connect": "Could not connect to the appliance",
-      "invalid_channels": "Invalid channel list: use controller numbers between 1 and 10000, separated by commas",
+      "event_action_required": "Set at least a preset or a MusiSelect command",
+      "invalid_channel_defs": "Invalid channels: one \"controller = name = default %\" per line, controller between 1 and 10000 (no duplicates), percentage between 0 and 100",
+      "channels_required": "Select at least one channel",
       "invalid_levels": "Invalid levels: one \"channel = dB\" per line, dB between -72 and +12",
       "name_exists": "A scene with this name already exists"
     }
@@ -127,11 +200,19 @@
     "button": {
       "flash_unit": {
         "name": "Flash unit LEDs"
+      },
+      "reset_volumes": {
+        "name": "Reset volumes to defaults"
       }
     },
     "select": {
       "volume_scene": {
         "name": "Volume scene"
+      }
+    },
+    "sensor": {
+      "event_end": {
+        "name": "{event} ends"
       }
     }
   }

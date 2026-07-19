@@ -8,10 +8,26 @@
           "host": "Hôte",
           "port": "Port"
         }
+      },
+      "musiselect": {
+        "title": "Appareil MusiSelect",
+        "description": "Adresse de la source musicale MusiSelect. Laissez l'hôte vide s'il n'y en a pas.",
+        "data": {
+          "musiselect_host": "Hôte",
+          "musiselect_port": "Port"
+        }
+      },
+      "channels": {
+        "title": "Canaux",
+        "description": "Les canaux de volume à gérer. Un par ligne au format « contrôleur = nom = % par défaut » (ex. 7122 = Bar = 70). Modifiable plus tard dans les options.",
+        "data": {
+          "channels": "Canaux"
+        }
       }
     },
     "error": {
-      "cannot_connect": "Impossible de se connecter à l'appareil"
+      "cannot_connect": "Impossible de se connecter à l'appareil",
+      "invalid_channel_defs": "Canaux invalides : un « contrôleur = nom = % par défaut » par ligne, contrôleur entre 1 et 10000 (sans doublons), pourcentage entre 0 et 100"
     },
     "abort": {
       "already_configured": "Cet appareil est déjà configuré"
@@ -22,17 +38,28 @@
       "init": {
         "title": "Kydax Sound",
         "menu_options": {
-          "connection": "Connexion à l'appareil",
+          "connection": "Connexions aux appareils",
+          "channels": "Canaux",
           "pause_groups": "Groupes de pause",
-          "volume_scenes": "Scènes de volume"
+          "volume_scenes": "Scènes de volume",
+          "event_buttons": "Boutons d'événement"
         }
       },
       "connection": {
-        "title": "Connexion à l'appareil",
-        "description": "Adresse de l'appareil Symetrix sur le réseau.",
+        "title": "Connexions aux appareils",
+        "description": "Adresses de l'appareil Symetrix et de la source musicale MusiSelect (laissez l'hôte MusiSelect vide s'il n'y en a pas).",
         "data": {
-          "host": "Hôte",
-          "port": "Port"
+          "host": "Hôte Symetrix",
+          "port": "Port Symetrix",
+          "musiselect_host": "Hôte MusiSelect",
+          "musiselect_port": "Port MusiSelect"
+        }
+      },
+      "channels": {
+        "title": "Canaux",
+        "description": "Un canal par ligne au format « contrôleur = nom = % par défaut » (ex. 7122 = Bar = 70). Supprimer une ligne supprime le canal partout.",
+        "data": {
+          "channels": "Canaux"
         }
       },
       "pause_groups": {
@@ -48,9 +75,6 @@
         "data": {
           "name": "Nom",
           "channels": "Canaux"
-        },
-        "data_description": {
-          "channels": "Numéros de contrôleur, séparés par des virgules (ex. 7152, 7158)."
         }
       },
       "edit_pause": {
@@ -64,9 +88,6 @@
         "data": {
           "name": "Nom",
           "channels": "Canaux"
-        },
-        "data_description": {
-          "channels": "Numéros de contrôleur, séparés par des virgules (ex. 7152, 7158)."
         }
       },
       "remove_pause": {
@@ -114,11 +135,63 @@
         "data": {
           "scenes": "Scènes à supprimer"
         }
+      },
+      "event_buttons": {
+        "title": "Boutons d'événement",
+        "menu_options": {
+          "add_event": "Ajouter un bouton d'événement",
+          "edit_event": "Modifier un bouton d'événement",
+          "remove_event": "Supprimer des boutons d'événement"
+        }
+      },
+      "add_event": {
+        "title": "Ajouter un bouton d'événement",
+        "description": "Activer l'événement charge le préréglage Symetrix, attend le délai, puis envoie la commande MusiSelect. Après la durée (ex. la longueur de la chanson), le préréglage de retour rétablit la source normale. Bloqué lorsqu'une pause est active.",
+        "data": {
+          "name": "Nom",
+          "preset": "Préréglage Symetrix",
+          "command": "Commande MusiSelect",
+          "delay": "Délai entre préréglage et commande",
+          "duration": "Durée (longueur de la chanson)",
+          "return_preset": "Préréglage de retour"
+        },
+        "data_description": {
+          "command": "Par exemple : PACINI diffSpecial 1"
+        }
+      },
+      "edit_event": {
+        "title": "Modifier un bouton d'événement",
+        "data": {
+          "event": "Bouton d'événement"
+        }
+      },
+      "edit_event_form": {
+        "title": "Modifier un bouton d'événement",
+        "description": "Activer l'événement charge le préréglage Symetrix, attend le délai, puis envoie la commande MusiSelect. Après la durée (ex. la longueur de la chanson), le préréglage de retour rétablit la source normale. Bloqué lorsqu'une pause est active.",
+        "data": {
+          "name": "Nom",
+          "preset": "Préréglage Symetrix",
+          "command": "Commande MusiSelect",
+          "delay": "Délai entre préréglage et commande",
+          "duration": "Durée (longueur de la chanson)",
+          "return_preset": "Préréglage de retour"
+        },
+        "data_description": {
+          "command": "Par exemple : PACINI diffSpecial 1"
+        }
+      },
+      "remove_event": {
+        "title": "Supprimer des boutons d'événement",
+        "data": {
+          "events": "Boutons d'événement à supprimer"
+        }
       }
     },
     "error": {
       "cannot_connect": "Impossible de se connecter à l'appareil",
-      "invalid_channels": "Liste de canaux invalide : utilisez des numéros de contrôleur entre 1 et 10000, séparés par des virgules",
+      "event_action_required": "Indiquez au moins un préréglage ou une commande MusiSelect",
+      "invalid_channel_defs": "Canaux invalides : un « contrôleur = nom = % par défaut » par ligne, contrôleur entre 1 et 10000 (sans doublons), pourcentage entre 0 et 100",
+      "channels_required": "Sélectionnez au moins un canal",
       "invalid_levels": "Niveaux invalides : un « canal = dB » par ligne, dB entre -72 et +12",
       "name_exists": "Une scène portant ce nom existe déjà"
     }
@@ -127,11 +200,19 @@
     "button": {
       "flash_unit": {
         "name": "Faire clignoter les voyants de l'appareil"
+      },
+      "reset_volumes": {
+        "name": "Réinitialiser les volumes par défaut"
       }
     },
     "select": {
       "volume_scene": {
         "name": "Scène de volume"
+      }
+    },
+    "sensor": {
+      "event_end": {
+        "name": "Fin de {event}"
       }
     }
   }

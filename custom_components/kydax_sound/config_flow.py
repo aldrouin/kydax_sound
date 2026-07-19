@@ -1,4 +1,9 @@
-"""Config and options flows for Kydax Sound."""
+"""Config and options flows for Kydax Sound.
+
+Initial setup is a wizard: Symetrix connection (tested) -> MusiSelect
+address (optional) -> channels with their default volume percentage.
+Everything remains editable afterwards through the options flow.
+"""
 
 from __future__ import annotations
 
@@ -29,8 +34,13 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    CONF_CHANNELS,
+    CONF_EVENT_BUTTONS,
+    CONF_MUSISELECT_HOST,
+    CONF_MUSISELECT_PORT,
     CONF_PAUSE_GROUPS,
     CONF_VOLUME_SCENES,
+    DEFAULT_MUSISELECT_PORT,
     DEFAULT_PORT,
     DOMAIN,
     FADER_MAX_DB,
@@ -38,36 +48,70 @@ from .const import (
 )
 from .symetrix import SymetrixClient, SymetrixError
 
+
+def _port_selector():
+    return vol.All(
+        NumberSelector(
+            NumberSelectorConfig(min=1, max=65535, step=1, mode=NumberSelectorMode.BOX)
+        ),
+        vol.Coerce(int),
+    )
+
+
 CONNECTION_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): TextSelector(),
-        vol.Required(CONF_PORT, default=DEFAULT_PORT): vol.All(
-            NumberSelector(
-                NumberSelectorConfig(
-                    min=1, max=65535, step=1, mode=NumberSelectorMode.BOX
-                )
-            ),
-            vol.Coerce(int),
+        vol.Required(CONF_PORT, default=DEFAULT_PORT): _port_selector(),
+    }
+)
+
+MUSISELECT_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_MUSISELECT_HOST): TextSelector(),
+        vol.Required(
+            CONF_MUSISELECT_PORT, default=DEFAULT_MUSISELECT_PORT
+        ): _port_selector(),
+    }
+)
+
+CHANNELS_SCHEMA = vol.Schema(
+    {
+        vol.Optional(CONF_CHANNELS, default=""): TextSelector(
+            TextSelectorConfig(multiline=True)
         ),
     }
 )
 
-# "7122, 7128 7134" -> [7122, 7128, 7134]
-_CHANNEL_SPLIT = re.compile(r"[\s,;]+")
+# one per line: "7122 = Bar = 70" (controller = name = default %)
+_CHANNEL_DEF_LINE = re.compile(r"^(\d+)\s*=\s*(.+?)\s*=\s*(\d{1,3})$")
 # one per line: "7122 = -24", "7122: -24" or "7122 -24" (comma decimals OK)
 _LEVEL_LINE = re.compile(r"^(\d+)\s*(?:[=:]\s*|\s+)(-?\d+(?:[.,]\d+)?)$")
 
 
-def _parse_channels(text: str) -> list[int] | None:
-    """Parse a channel list; None if anything is invalid."""
-    channels: list[int] = []
-    for part in _CHANNEL_SPLIT.split(text.strip()):
-        if not part:
+def _parse_channel_defs(text: str) -> list[dict[str, Any]] | None:
+    """Parse channel definition lines; None if anything is invalid."""
+    channels: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
             continue
-        if not part.isdigit() or not 1 <= int(part) <= 10000:
+        match = _CHANNEL_DEF_LINE.match(line)
+        if match is None:
             return None
-        channels.append(int(part))
-    return channels or None
+        number, name, pct = int(match.group(1)), match.group(2), int(match.group(3))
+        if not 1 <= number <= 10000 or not 0 <= pct <= 100 or number in seen:
+            return None
+        seen.add(number)
+        channels.append({"number": number, "name": name, "default_pct": pct})
+    return channels
+
+
+def _format_channel_defs(channels: list[dict[str, Any]]) -> str:
+    return "\n".join(
+        f"{channel['number']} = {channel['name']} = {channel['default_pct']}"
+        for channel in channels
+    )
 
 
 def _parse_levels(text: str) -> dict[str, float] | None:
@@ -87,12 +131,20 @@ def _parse_levels(text: str) -> dict[str, float] | None:
     return levels or None
 
 
-def _format_channels(channels: list[int]) -> str:
-    return ", ".join(str(channel) for channel in channels)
-
-
 def _format_levels(levels: dict[str, float]) -> str:
     return "\n".join(f"{channel} = {level}" for channel, level in levels.items())
+
+
+def _clean_musiselect(options: dict[str, Any], user_input: dict[str, Any]) -> None:
+    """Store the MusiSelect address; an empty host means no device."""
+    host = (user_input.get(CONF_MUSISELECT_HOST) or "").strip()
+    if host:
+        options[CONF_MUSISELECT_HOST] = host
+    else:
+        options.pop(CONF_MUSISELECT_HOST, None)
+    options[CONF_MUSISELECT_PORT] = user_input.get(
+        CONF_MUSISELECT_PORT, DEFAULT_MUSISELECT_PORT
+    )
 
 
 async def _async_try_connect(host: str, port: int) -> bool:
@@ -108,9 +160,13 @@ async def _async_try_connect(host: str, port: int) -> bool:
 
 
 class KydaxSoundConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Initial setup: appliance address. One entry per appliance."""
+    """Setup wizard: Symetrix -> MusiSelect -> channels."""
 
     VERSION = 1
+
+    def __init__(self) -> None:
+        self._connection: dict[str, Any] = {}
+        self._musiselect: dict[str, Any] = {}
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -122,19 +178,50 @@ class KydaxSoundConfigFlow(ConfigFlow, domain=DOMAIN):
             if await _async_try_connect(
                 user_input[CONF_HOST], user_input[CONF_PORT]
             ):
-                return self.async_create_entry(
-                    title=f"Symetrix {user_input[CONF_HOST]}",
-                    data={},
-                    options={
-                        **user_input,
-                        CONF_PAUSE_GROUPS: [],
-                        CONF_VOLUME_SCENES: [],
-                    },
-                )
+                self._connection = user_input
+                return await self.async_step_musiselect()
             errors["base"] = "cannot_connect"
 
         return self.async_show_form(
             step_id="user", data_schema=CONNECTION_SCHEMA, errors=errors
+        )
+
+    async def async_step_musiselect(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            self._musiselect = user_input
+            return await self.async_step_channels()
+
+        return self.async_show_form(
+            step_id="musiselect", data_schema=MUSISELECT_SCHEMA
+        )
+
+    async def async_step_channels(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            channels = _parse_channel_defs(user_input.get(CONF_CHANNELS, ""))
+            if channels is None:
+                errors[CONF_CHANNELS] = "invalid_channel_defs"
+            else:
+                options: dict[str, Any] = {
+                    **self._connection,
+                    CONF_CHANNELS: channels,
+                    CONF_PAUSE_GROUPS: [],
+                    CONF_VOLUME_SCENES: [],
+                    CONF_EVENT_BUTTONS: [],
+                }
+                _clean_musiselect(options, self._musiselect)
+                return self.async_create_entry(
+                    title=f"Symetrix {self._connection[CONF_HOST]}",
+                    data={},
+                    options=options,
+                )
+
+        return self.async_show_form(
+            step_id="channels", data_schema=CHANNELS_SCHEMA, errors=errors
         )
 
     @staticmethod
@@ -144,11 +231,12 @@ class KydaxSoundConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class KydaxSoundOptionsFlow(OptionsFlow):
-    """Ongoing management: connection, pause groups, volume scenes."""
+    """Ongoing management: connection, channels, pause groups, volume scenes."""
 
     def __init__(self) -> None:
         self._edit_group_id: str | None = None
         self._edit_scene_id: str | None = None
+        self._edit_event_id: str | None = None
 
     @property
     def _options(self) -> dict[str, Any]:
@@ -156,6 +244,15 @@ class KydaxSoundOptionsFlow(OptionsFlow):
 
     def _save(self, new_options: dict[str, Any]) -> ConfigFlowResult:
         return self.async_create_entry(title="", data=new_options)
+
+    def _channel_select_options(self) -> list[SelectOptionDict]:
+        return [
+            SelectOptionDict(
+                value=str(channel["number"]),
+                label=f"{channel['name']} ({channel['number']})",
+            )
+            for channel in self._options.get(CONF_CHANNELS, [])
+        ]
 
     def _group_select_options(self) -> list[SelectOptionDict]:
         return [
@@ -174,7 +271,13 @@ class KydaxSoundOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         return self.async_show_menu(
             step_id="init",
-            menu_options=["connection", "pause_groups", "volume_scenes"],
+            menu_options=[
+                "connection",
+                "channels",
+                "pause_groups",
+                "volume_scenes",
+                "event_buttons",
+            ],
         )
 
     # --- connection ---------------------------------------------------------
@@ -182,18 +285,65 @@ class KydaxSoundOptionsFlow(OptionsFlow):
     async def async_step_connection(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        schema = vol.Schema(
+            {**CONNECTION_SCHEMA.schema, **MUSISELECT_SCHEMA.schema}
+        )
         errors: dict[str, str] = {}
         if user_input is not None:
             if await _async_try_connect(
                 user_input[CONF_HOST], user_input[CONF_PORT]
             ):
-                return self._save({**self._options, **user_input})
+                options = self._options
+                options[CONF_HOST] = user_input[CONF_HOST]
+                options[CONF_PORT] = user_input[CONF_PORT]
+                _clean_musiselect(options, user_input)
+                return self._save(options)
             errors["base"] = "cannot_connect"
 
         return self.async_show_form(
             step_id="connection",
+            data_schema=self.add_suggested_values_to_schema(schema, self._options),
+            errors=errors,
+        )
+
+    # --- channels -----------------------------------------------------------
+
+    async def async_step_channels(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Bulk edit of the channel list, prefilled with the current config."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            channels = _parse_channel_defs(user_input.get(CONF_CHANNELS, ""))
+            if channels is None:
+                errors[CONF_CHANNELS] = "invalid_channel_defs"
+            else:
+                options = self._options
+                options[CONF_CHANNELS] = channels
+                # Drop deleted channels from pause group scopes.
+                numbers = {channel["number"] for channel in channels}
+                options[CONF_PAUSE_GROUPS] = [
+                    {
+                        **group,
+                        "channels": [
+                            number
+                            for number in group["channels"]
+                            if number in numbers
+                        ],
+                    }
+                    for group in options.get(CONF_PAUSE_GROUPS, [])
+                ]
+                return self._save(options)
+
+        return self.async_show_form(
+            step_id="channels",
             data_schema=self.add_suggested_values_to_schema(
-                CONNECTION_SCHEMA, self._options
+                CHANNELS_SCHEMA,
+                {
+                    CONF_CHANNELS: _format_channel_defs(
+                        self._options.get(CONF_CHANNELS, [])
+                    )
+                },
             ),
             errors=errors,
         )
@@ -204,7 +354,13 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         return vol.Schema(
             {
                 vol.Required("name"): TextSelector(),
-                vol.Required("channels"): TextSelector(),
+                vol.Required("channels", default=[]): SelectSelector(
+                    SelectSelectorConfig(
+                        options=self._channel_select_options(),
+                        multiple=True,
+                        mode=SelectSelectorMode.LIST,
+                    )
+                ),
             }
         )
 
@@ -221,9 +377,8 @@ class KydaxSoundOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            channels = _parse_channels(user_input["channels"])
-            if channels is None:
-                errors["channels"] = "invalid_channels"
+            if not user_input.get("channels"):
+                errors["channels"] = "channels_required"
             else:
                 options = self._options
                 groups = list(options.get(CONF_PAUSE_GROUPS, []))
@@ -231,7 +386,7 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                     {
                         "id": uuid4().hex[:8],
                         "name": user_input["name"],
-                        "channels": channels,
+                        "channels": [int(number) for number in user_input["channels"]],
                     }
                 )
                 options[CONF_PAUSE_GROUPS] = groups
@@ -275,14 +430,13 @@ class KydaxSoundOptionsFlow(OptionsFlow):
 
         errors: dict[str, str] = {}
         if user_input is not None:
-            channels = _parse_channels(user_input["channels"])
-            if channels is None:
-                errors["channels"] = "invalid_channels"
+            if not user_input.get("channels"):
+                errors["channels"] = "channels_required"
             else:
                 updated = {
                     "id": current["id"],
                     "name": user_input["name"],
-                    "channels": channels,
+                    "channels": [int(number) for number in user_input["channels"]],
                 }
                 options[CONF_PAUSE_GROUPS] = [
                     updated if g["id"] == current["id"] else g for g in groups
@@ -295,7 +449,7 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                 self._pause_schema(),
                 {
                     "name": current["name"],
-                    "channels": _format_channels(current["channels"]),
+                    "channels": [str(number) for number in current["channels"]],
                 },
             ),
             errors=errors,
@@ -321,6 +475,191 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                     vol.Required("groups", default=[]): SelectSelector(
                         SelectSelectorConfig(
                             options=self._group_select_options(),
+                            multiple=True,
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    )
+                }
+            ),
+        )
+
+    # --- event buttons --------------------------------------------------------
+
+    def _event_select_options(self) -> list[SelectOptionDict]:
+        return [
+            SelectOptionDict(value=event["id"], label=event["name"])
+            for event in self._options.get(CONF_EVENT_BUTTONS, [])
+        ]
+
+    def _event_schema(self) -> vol.Schema:
+        return vol.Schema(
+            {
+                vol.Required("name"): TextSelector(),
+                vol.Optional("preset"): vol.All(
+                    NumberSelector(
+                        NumberSelectorConfig(
+                            min=1, max=150, step=1, mode=NumberSelectorMode.BOX
+                        )
+                    ),
+                    vol.Coerce(int),
+                ),
+                vol.Optional("command"): TextSelector(),
+                vol.Required("delay", default=3): vol.All(
+                    NumberSelector(
+                        NumberSelectorConfig(
+                            min=0,
+                            max=120,
+                            step=1,
+                            mode=NumberSelectorMode.BOX,
+                            unit_of_measurement="s",
+                        )
+                    ),
+                    vol.Coerce(int),
+                ),
+                vol.Optional("duration"): vol.All(
+                    NumberSelector(
+                        NumberSelectorConfig(
+                            min=1,
+                            max=3600,
+                            step=1,
+                            mode=NumberSelectorMode.BOX,
+                            unit_of_measurement="s",
+                        )
+                    ),
+                    vol.Coerce(int),
+                ),
+                vol.Optional("return_preset"): vol.All(
+                    NumberSelector(
+                        NumberSelectorConfig(
+                            min=1, max=150, step=1, mode=NumberSelectorMode.BOX
+                        )
+                    ),
+                    vol.Coerce(int),
+                ),
+            }
+        )
+
+    @staticmethod
+    def _event_from_input(event_id: str, user_input: dict[str, Any]) -> dict[str, Any]:
+        event: dict[str, Any] = {
+            "id": event_id,
+            "name": user_input["name"],
+            "delay": user_input.get("delay", 3),
+        }
+        if user_input.get("preset"):
+            event["preset"] = user_input["preset"]
+        command = (user_input.get("command") or "").strip()
+        if command:
+            event["command"] = command
+        if user_input.get("duration"):
+            event["duration"] = user_input["duration"]
+        if user_input.get("return_preset"):
+            event["return_preset"] = user_input["return_preset"]
+        return event
+
+    @staticmethod
+    def _event_action_valid(user_input: dict[str, Any]) -> bool:
+        return bool(
+            user_input.get("preset") or (user_input.get("command") or "").strip()
+        )
+
+    async def async_step_event_buttons(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        menu = ["add_event"]
+        if self._options.get(CONF_EVENT_BUTTONS):
+            menu += ["edit_event", "remove_event"]
+        return self.async_show_menu(step_id="event_buttons", menu_options=menu)
+
+    async def async_step_add_event(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not self._event_action_valid(user_input):
+                errors["base"] = "event_action_required"
+            else:
+                options = self._options
+                events = list(options.get(CONF_EVENT_BUTTONS, []))
+                events.append(self._event_from_input(uuid4().hex[:8], user_input))
+                options[CONF_EVENT_BUTTONS] = events
+                return self._save(options)
+
+        return self.async_show_form(
+            step_id="add_event", data_schema=self._event_schema(), errors=errors
+        )
+
+    async def async_step_edit_event(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            self._edit_event_id = user_input["event"]
+            return await self.async_step_edit_event_form()
+
+        return self.async_show_form(
+            step_id="edit_event",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("event"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=self._event_select_options(),
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def async_step_edit_event_form(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        options = self._options
+        events = list(options.get(CONF_EVENT_BUTTONS, []))
+        current = next(
+            (e for e in events if e["id"] == self._edit_event_id), None
+        )
+        if current is None:
+            return await self.async_step_event_buttons()
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not self._event_action_valid(user_input):
+                errors["base"] = "event_action_required"
+            else:
+                updated = self._event_from_input(current["id"], user_input)
+                options[CONF_EVENT_BUTTONS] = [
+                    updated if e["id"] == current["id"] else e for e in events
+                ]
+                return self._save(options)
+
+        return self.async_show_form(
+            step_id="edit_event_form",
+            data_schema=self.add_suggested_values_to_schema(
+                self._event_schema(), current
+            ),
+            errors=errors,
+        )
+
+    async def async_step_remove_event(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            options = self._options
+            removed = set(user_input.get("events", []))
+            options[CONF_EVENT_BUTTONS] = [
+                e
+                for e in options.get(CONF_EVENT_BUTTONS, [])
+                if e["id"] not in removed
+            ]
+            return self._save(options)
+
+        return self.async_show_form(
+            step_id="remove_event",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("events", default=[]): SelectSelector(
+                        SelectSelectorConfig(
+                            options=self._event_select_options(),
                             multiple=True,
                             mode=SelectSelectorMode.LIST,
                         )
