@@ -29,7 +29,7 @@ async def async_setup(hass, config):
 
         # Create another UDP connection
         transport, protocol = await loop.create_datagram_endpoint(
-            lambda: asyncio.DatagramProtocol(), remote_addr=("10.35.82.24", 2325)
+            lambda: asyncio.DatagramProtocol(), remote_addr=("192.168.234.184", 2325)
         )
 
         # Send the command and wait for the response
@@ -60,7 +60,7 @@ async def async_setup(hass, config):
 
         # Create another UDP connection
         transport, protocol = await loop.create_datagram_endpoint(
-            lambda: asyncio.DatagramProtocol(), remote_addr=("10.35.82.24", 2325)
+            lambda: asyncio.DatagramProtocol(), remote_addr=("192.168.234.184", 2325)
         )
 
 

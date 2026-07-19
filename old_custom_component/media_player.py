@@ -33,9 +33,9 @@ def setup_platform(hass, config, add_entities, discovery_info=None) -> None:
     def handle_set_db(call):
         entity_id = call.data.get("entity_id")
         db = call.data.get("db")
-        ##_LOGGER.info(call)
-        ##_LOGGER.info(entity_id)
-        ##_LOGGER.info(db)
+        _LOGGER.info(call)
+        _LOGGER.info(entity_id)
+        _LOGGER.info(db)
         for entity in entities:
             if entity.entity_id == entity_id:
                 entity.set_db(db)
@@ -191,12 +191,12 @@ class SymetrixMediaPlayer(MediaPlayerEntity):
 
     def send_command(self, command):
         """Sends a UDP command and returns the response."""
-        ##_LOGGER.info(f"Command : {command}")
+        _LOGGER.info(f"Command : {command}")
 
         self._sock.sendto(command.encode("ASCII"), (self._host, self._port))
 
         received_data, addr = self._sock.recvfrom(1024)
 
         decoded_data = received_data.decode("ASCII")
-        ##_LOGGER.info(f"Response : {decoded_data}")
+        _LOGGER.info(f"Response : {decoded_data}")
         return decoded_data

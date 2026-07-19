@@ -1,0 +1,138 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Symetrix appliance",
+        "description": "Address of the Symetrix appliance on the network.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the appliance"
+    },
+    "abort": {
+      "already_configured": "This appliance is already configured"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kydax Sound",
+        "menu_options": {
+          "connection": "Appliance connection",
+          "pause_groups": "Pause groups",
+          "volume_scenes": "Volume scenes"
+        }
+      },
+      "connection": {
+        "title": "Appliance connection",
+        "description": "Address of the Symetrix appliance on the network.",
+        "data": {
+          "host": "Host",
+          "port": "Port"
+        }
+      },
+      "pause_groups": {
+        "title": "Pause groups",
+        "menu_options": {
+          "add_pause": "Add a pause group",
+          "edit_pause": "Edit a pause group",
+          "remove_pause": "Remove pause groups"
+        }
+      },
+      "add_pause": {
+        "title": "Add a pause group",
+        "data": {
+          "name": "Name",
+          "channels": "Channels"
+        },
+        "data_description": {
+          "channels": "Controller numbers, separated by commas (e.g. 7152, 7158)."
+        }
+      },
+      "edit_pause": {
+        "title": "Edit a pause group",
+        "data": {
+          "group": "Group"
+        }
+      },
+      "edit_pause_form": {
+        "title": "Edit a pause group",
+        "data": {
+          "name": "Name",
+          "channels": "Channels"
+        },
+        "data_description": {
+          "channels": "Controller numbers, separated by commas (e.g. 7152, 7158)."
+        }
+      },
+      "remove_pause": {
+        "title": "Remove pause groups",
+        "data": {
+          "groups": "Groups to remove"
+        }
+      },
+      "volume_scenes": {
+        "title": "Volume scenes",
+        "menu_options": {
+          "add_scene": "Add a volume scene",
+          "edit_scene": "Edit a volume scene",
+          "remove_scene": "Remove volume scenes"
+        }
+      },
+      "add_scene": {
+        "title": "Add a volume scene",
+        "data": {
+          "name": "Name",
+          "levels": "Levels"
+        },
+        "data_description": {
+          "levels": "One channel per line as \"channel = dB\" (e.g. 7122 = -24). Range -72 to +12 dB; -72 is off."
+        }
+      },
+      "edit_scene": {
+        "title": "Edit a volume scene",
+        "data": {
+          "scene": "Scene"
+        }
+      },
+      "edit_scene_form": {
+        "title": "Edit a volume scene",
+        "data": {
+          "name": "Name",
+          "levels": "Levels"
+        },
+        "data_description": {
+          "levels": "One channel per line as \"channel = dB\" (e.g. 7122 = -24). Range -72 to +12 dB; -72 is off."
+        }
+      },
+      "remove_scene": {
+        "title": "Remove volume scenes",
+        "data": {
+          "scenes": "Scenes to remove"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the appliance",
+      "invalid_channels": "Invalid channel list: use controller numbers between 1 and 10000, separated by commas",
+      "invalid_levels": "Invalid levels: one \"channel = dB\" per line, dB between -72 and +12",
+      "name_exists": "A scene with this name already exists"
+    }
+  },
+  "entity": {
+    "button": {
+      "flash_unit": {
+        "name": "Flash unit LEDs"
+      }
+    },
+    "select": {
+      "volume_scene": {
+        "name": "Volume scene"
+      }
+    }
+  }
+}

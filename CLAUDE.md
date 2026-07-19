@@ -1,10 +1,10 @@
-# Kydax Symetrix
+# Kydax Sound
 
-Home Assistant custom integration controlling a Symetrix audio DSP appliance (volumes, mutes, presets) for a restaurant. Sibling of **kydax_light** (`C:\Workspace\kydax_light`, github.com/aldrouin/kydax_light) — that repo is the reference implementation; when in doubt, copy its patterns.
+Home Assistant custom integration (domain `kydax_sound`, in this repo still named `kydax_symetrix` on GitHub) controlling restaurant audio: a Symetrix Jupiter 8 DSP appliance (volumes, mutes, presets) and, planned, a "MusiSelect" source device (documentation to come from the user). Sibling of **kydax_light** (`C:\Workspace\kydax_light`, github.com/aldrouin/kydax_light) — that repo is the reference implementation; when in doubt, copy its patterns.
 
 ## Purpose / background
 
-Replaces part of the user's old `kydax_dimmer`-era setup (`C:\Workspace\kydax`). Key original pain points to solve: HA must read the appliance's actual state on startup (query the Symetrix over TCP, don't trust last-known HA state), and volume controls must reflect changes made outside HA. Symetrix control protocol is TCP (default port 48631), text commands like `CS <controller> <value>` / `GS <controller>`.
+Replaces part of the user's old `kydax_dimmer`-era setup (`C:\Workspace\kydax`). Key original pain points to solve: HA must read the appliance's actual state on startup (query the Symetrix, don't trust last-known HA state), and volume controls must reflect changes made outside HA. The device is a Jupiter 8: the control protocol is **UDP, port 48630** (text commands like `CS <controller> <value>` / `GS <controller>`, `<CR>`-terminated) — full details in `PROTOCOL.md`. It also supports pushed (unsolicited) updates in `#<ctrl>=<pos>` format via the `PU`/`PUE` commands.
 
 ## Architecture pattern (must match kydax_light)
 
@@ -21,7 +21,7 @@ Replaces part of the user's old `kydax_dimmer`-era setup (`C:\Workspace\kydax`).
 - **No Python on this machine** (Windows). Use Node.js for helper scripts (JSON edits etc.).
 - Verify before every release inside the real HA image (Docker Desktop may need starting first):
   ```bash
-  docker run --rm -v "C:\Workspace\kydax_symetrix\custom_components:/cc:ro" ghcr.io/home-assistant/home-assistant:stable python3 -c "import sys; sys.path.insert(0,'/cc'); import kydax_symetrix.config_flow; print('OK')"
+  docker run --rm -v "C:\Workspace\kydax_symetrix\custom_components:/cc:ro" ghcr.io/home-assistant/home-assistant:stable python3 -c "import sys; sys.path.insert(0,'/cc'); import kydax_sound.config_flow; print('OK')"
   ```
   Import every module; add small logic asserts the same way kydax_light does.
 - CI: `.github/workflows/hassfest.yml` runs hassfest on push.

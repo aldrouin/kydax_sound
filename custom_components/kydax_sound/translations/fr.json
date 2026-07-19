@@ -1,0 +1,138 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Appareil Symetrix",
+        "description": "Adresse de l'appareil Symetrix sur le réseau.",
+        "data": {
+          "host": "Hôte",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de se connecter à l'appareil"
+    },
+    "abort": {
+      "already_configured": "Cet appareil est déjà configuré"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Kydax Sound",
+        "menu_options": {
+          "connection": "Connexion à l'appareil",
+          "pause_groups": "Groupes de pause",
+          "volume_scenes": "Scènes de volume"
+        }
+      },
+      "connection": {
+        "title": "Connexion à l'appareil",
+        "description": "Adresse de l'appareil Symetrix sur le réseau.",
+        "data": {
+          "host": "Hôte",
+          "port": "Port"
+        }
+      },
+      "pause_groups": {
+        "title": "Groupes de pause",
+        "menu_options": {
+          "add_pause": "Ajouter un groupe de pause",
+          "edit_pause": "Modifier un groupe de pause",
+          "remove_pause": "Supprimer des groupes de pause"
+        }
+      },
+      "add_pause": {
+        "title": "Ajouter un groupe de pause",
+        "data": {
+          "name": "Nom",
+          "channels": "Canaux"
+        },
+        "data_description": {
+          "channels": "Numéros de contrôleur, séparés par des virgules (ex. 7152, 7158)."
+        }
+      },
+      "edit_pause": {
+        "title": "Modifier un groupe de pause",
+        "data": {
+          "group": "Groupe"
+        }
+      },
+      "edit_pause_form": {
+        "title": "Modifier un groupe de pause",
+        "data": {
+          "name": "Nom",
+          "channels": "Canaux"
+        },
+        "data_description": {
+          "channels": "Numéros de contrôleur, séparés par des virgules (ex. 7152, 7158)."
+        }
+      },
+      "remove_pause": {
+        "title": "Supprimer des groupes de pause",
+        "data": {
+          "groups": "Groupes à supprimer"
+        }
+      },
+      "volume_scenes": {
+        "title": "Scènes de volume",
+        "menu_options": {
+          "add_scene": "Ajouter une scène de volume",
+          "edit_scene": "Modifier une scène de volume",
+          "remove_scene": "Supprimer des scènes de volume"
+        }
+      },
+      "add_scene": {
+        "title": "Ajouter une scène de volume",
+        "data": {
+          "name": "Nom",
+          "levels": "Niveaux"
+        },
+        "data_description": {
+          "levels": "Un canal par ligne au format « canal = dB » (ex. 7122 = -24). Plage de -72 à +12 dB; -72 = coupé."
+        }
+      },
+      "edit_scene": {
+        "title": "Modifier une scène de volume",
+        "data": {
+          "scene": "Scène"
+        }
+      },
+      "edit_scene_form": {
+        "title": "Modifier une scène de volume",
+        "data": {
+          "name": "Nom",
+          "levels": "Niveaux"
+        },
+        "data_description": {
+          "levels": "Un canal par ligne au format « canal = dB » (ex. 7122 = -24). Plage de -72 à +12 dB; -72 = coupé."
+        }
+      },
+      "remove_scene": {
+        "title": "Supprimer des scènes de volume",
+        "data": {
+          "scenes": "Scènes à supprimer"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de se connecter à l'appareil",
+      "invalid_channels": "Liste de canaux invalide : utilisez des numéros de contrôleur entre 1 et 10000, séparés par des virgules",
+      "invalid_levels": "Niveaux invalides : un « canal = dB » par ligne, dB entre -72 et +12",
+      "name_exists": "Une scène portant ce nom existe déjà"
+    }
+  },
+  "entity": {
+    "button": {
+      "flash_unit": {
+        "name": "Faire clignoter les voyants de l'appareil"
+      }
+    },
+    "select": {
+      "volume_scene": {
+        "name": "Scène de volume"
+      }
+    }
+  }
+}
