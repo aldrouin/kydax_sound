@@ -1,0 +1,15 @@
+{
+  "domain": "kydax_symetrix",
+  "name": "Kydax Symetrix",
+  "codeowners": [
+    "@aldrouin"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/aldrouin/kydax_symetrix",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/aldrouin/kydax_symetrix/issues",
+  "requirements": [],
+  "version": "0.0.1"
+}

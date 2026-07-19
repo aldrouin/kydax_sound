@@ -1,0 +1,20 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Appareil Symetrix",
+        "description": "Adresse de l'appareil Symetrix sur le réseau.",
+        "data": {
+          "host": "Hôte",
+          "port": "Port"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Impossible de se connecter à l'appareil"
+    },
+    "abort": {
+      "already_configured": "Cet appareil est déjà configuré"
+    }
+  }
+}
