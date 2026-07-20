@@ -308,6 +308,10 @@ class KydaxSoundHub:
     def is_event_running(self, event_id: str) -> bool:
         return event_id in self.event_runs
 
+    @property
+    def any_event_running(self) -> bool:
+        return bool(self.event_runs)
+
     def event_finishes_at(self, event_id: str) -> datetime | None:
         run = self.event_runs.get(event_id)
         return run.finishes_at if run else None
@@ -324,6 +328,14 @@ class KydaxSoundHub:
             raise HomeAssistantError(f"Unknown event button {event_id}")
         if event_id in self.event_runs:
             return  # already running
+        if self.event_runs:
+            other = next(iter(self.event_runs))
+            other_name = self.event_buttons.get(other, {}).get("name", other)
+            raise HomeAssistantError(
+                f"Event '{other_name}' is already running; cancel it first "
+                f"(l'événement '{other_name}' est déjà en cours; annulez-le "
+                "d'abord)"
+            )
         if self.paused_channels:
             raise HomeAssistantError(
                 "A pause is active; event not triggered "

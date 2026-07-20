@@ -141,6 +141,14 @@ class KydaxSoundEventSwitch(KydaxSoundEntity, SwitchEntity):
         self._attr_unique_id = f"{hub.entry.entry_id}_event_{event['id']}"
 
     @property
+    def available(self) -> bool:
+        # while an event runs, only its own switch stays usable (to cancel);
+        # the other event switches are blocked
+        if not super().available:
+            return False
+        return not self._hub.any_event_running or self.is_on
+
+    @property
     def is_on(self) -> bool:
         return self._hub.is_event_running(self._event["id"])
 
