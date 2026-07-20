@@ -59,13 +59,18 @@ def channel_level_table(channel: dict) -> dict[int, float]:
 
 
 def channel_max_db(channel: dict) -> float:
-    """The loudest dB this channel may ever play: its highest defined level.
+    """The loudest dB this channel may ever play: the value set for its
+    highest level (normally 100%).
 
-    Used to cap the volume slider so a channel cannot be driven past the
-    level configured as its maximum.
+    Everything goes through this ceiling - the volume slider, the level
+    toggles and the set_channel_db service - so a channel can never be
+    driven past the volume configured as its maximum, even if a lower level
+    was mistyped louder than the top one.
     """
     table = channel_level_table(channel)
-    return max(table.values()) if table else FADER_MIN_DB
+    if not table:
+        return FADER_MIN_DB
+    return table[max(table)]
 
 
 def channel_db_for_level(channel: dict, level: float) -> float | None:
@@ -81,8 +86,9 @@ def channel_db_for_level(channel: dict, level: float) -> float | None:
     table = channel_level_table(channel)
     if not table:
         return None
+    ceiling = channel_max_db(channel)
     if level in table:
-        return table[level]
+        return min(table[level], ceiling)
     points = sorted(table.items())
     if level >= points[-1][0]:
         return points[-1][1]  # never louder than the configured maximum
