@@ -1,9 +1,0 @@
-{
-    "domain": "symetrix",
-    "name": "Symetrix",
-    "documentation": "https://www.example.com",
-    "dependencies": [],
-    "codeowners": [],
-    "requirements": [],
-    "version": "0.1.0"
-   }
