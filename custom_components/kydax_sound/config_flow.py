@@ -704,18 +704,6 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                     vol.Coerce(int),
                 ),
                 vol.Optional("command"): TextSelector(),
-                vol.Required("delay", default=3): vol.All(
-                    NumberSelector(
-                        NumberSelectorConfig(
-                            min=0,
-                            max=120,
-                            step=1,
-                            mode=NumberSelectorMode.BOX,
-                            unit_of_measurement="s",
-                        )
-                    ),
-                    vol.Coerce(int),
-                ),
                 vol.Optional("duration"): vol.All(
                     NumberSelector(
                         NumberSelectorConfig(
@@ -744,7 +732,6 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         event: dict[str, Any] = {
             "id": event_id,
             "name": user_input["name"],
-            "delay": user_input.get("delay", 3),
         }
         if user_input.get("preset"):
             event["preset"] = user_input["preset"]

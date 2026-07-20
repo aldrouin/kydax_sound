@@ -160,12 +160,11 @@
       },
       "add_event": {
         "title": "Ajouter un bouton d'événement",
-        "description": "Activer l'événement charge le préréglage Symetrix, attend le délai, puis envoie la commande MusiSelect. Après la durée (ex. la longueur de la chanson), le préréglage de retour rétablit la source normale. Bloqué lorsqu'une pause est active.",
+        "description": "Activer l'événement charge le préréglage Symetrix et envoie la commande MusiSelect. Après la durée (ex. la longueur de la chanson), le préréglage de retour rétablit la source normale. Bloqué lorsqu'une pause est active.",
         "data": {
           "name": "Nom",
           "preset": "Préréglage Symetrix",
           "command": "Commande MusiSelect",
-          "delay": "Délai entre préréglage et commande",
           "duration": "Durée (longueur de la chanson)",
           "return_preset": "Préréglage de retour"
         },
@@ -181,12 +180,11 @@
       },
       "edit_event_form": {
         "title": "Modifier un bouton d'événement",
-        "description": "Activer l'événement charge le préréglage Symetrix, attend le délai, puis envoie la commande MusiSelect. Après la durée (ex. la longueur de la chanson), le préréglage de retour rétablit la source normale. Bloqué lorsqu'une pause est active.",
+        "description": "Activer l'événement charge le préréglage Symetrix et envoie la commande MusiSelect. Après la durée (ex. la longueur de la chanson), le préréglage de retour rétablit la source normale. Bloqué lorsqu'une pause est active.",
         "data": {
           "name": "Nom",
           "preset": "Préréglage Symetrix",
           "command": "Commande MusiSelect",
-          "delay": "Délai entre préréglage et commande",
           "duration": "Durée (longueur de la chanson)",
           "return_preset": "Préréglage de retour"
         },
@@ -225,7 +223,7 @@
     },
     "trigger_event": {
       "name": "Déclencher un événement",
-      "description": "Démarre un événement configuré par son nom (ex. la chanson de fête) : charge le préréglage Symetrix, attend le délai, envoie la commande MusiSelect, puis après la durée charge le préréglage de retour. Bloqué lorsqu'une pause est active.",
+      "description": "Démarre un événement configuré par son nom (ex. la chanson de fête) : charge le préréglage Symetrix, envoie la commande MusiSelect, puis après la durée charge le préréglage de retour. Bloqué lorsqu'une pause est active.",
       "fields": {
         "name": {
           "name": "Nom de l'événement",

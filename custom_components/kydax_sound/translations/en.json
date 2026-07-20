@@ -160,12 +160,11 @@
       },
       "add_event": {
         "title": "Add an event button",
-        "description": "Turning the event on loads the Symetrix preset, waits for the delay, then sends the MusiSelect command. After the duration (e.g. the song length), the return preset switches back to the normal source. Blocked while a pause is active.",
+        "description": "Turning the event on loads the Symetrix preset and sends the MusiSelect command. After the duration (e.g. the song length), the return preset switches back to the normal source. Blocked while a pause is active.",
         "data": {
           "name": "Name",
           "preset": "Symetrix preset",
           "command": "MusiSelect command",
-          "delay": "Delay between preset and command",
           "duration": "Duration (song length)",
           "return_preset": "Return preset"
         },
@@ -181,12 +180,11 @@
       },
       "edit_event_form": {
         "title": "Edit an event button",
-        "description": "Turning the event on loads the Symetrix preset, waits for the delay, then sends the MusiSelect command. After the duration (e.g. the song length), the return preset switches back to the normal source. Blocked while a pause is active.",
+        "description": "Turning the event on loads the Symetrix preset and sends the MusiSelect command. After the duration (e.g. the song length), the return preset switches back to the normal source. Blocked while a pause is active.",
         "data": {
           "name": "Name",
           "preset": "Symetrix preset",
           "command": "MusiSelect command",
-          "delay": "Delay between preset and command",
           "duration": "Duration (song length)",
           "return_preset": "Return preset"
         },
@@ -225,7 +223,7 @@
     },
     "trigger_event": {
       "name": "Trigger an event",
-      "description": "Starts a configured event by name (e.g. the birthday song): loads the Symetrix preset, waits the delay, sends the MusiSelect command, then after the duration loads the return preset. Blocked while a pause is active.",
+      "description": "Starts a configured event by name (e.g. the birthday song): loads the Symetrix preset, sends the MusiSelect command, then after the duration loads the return preset. Blocked while a pause is active.",
       "fields": {
         "name": {
           "name": "Event name",

@@ -294,14 +294,7 @@ class KydaxSoundHub:
 
         finishes_at: datetime | None = None
         if event.get("duration"):
-            lead = (
-                event.get("delay", 3)
-                if event.get("preset") and event.get("command")
-                else 0
-            )
-            finishes_at = dt_util.utcnow() + timedelta(
-                seconds=lead + event["duration"]
-            )
+            finishes_at = dt_util.utcnow() + timedelta(seconds=event["duration"])
         task = self.entry.async_create_background_task(
             self.hass, self._async_run_event(event), f"kydax_sound event {event_id}"
         )
@@ -309,17 +302,17 @@ class KydaxSoundHub:
         self._dispatch()
 
     async def _async_run_event(self, event: dict) -> None:
-        """The event sequence; runs as a background task."""
+        """The event sequence; runs as a background task.
+
+        Preset and MusiSelect command go out back-to-back (matching the old
+        deployment); the duration is the only wait before the return preset.
+        """
         try:
             preset = event.get("preset")
             command = event.get("command")
             if preset:
                 await self.symetrix.async_load_preset(preset)
             if command:
-                if preset:
-                    # let the Jupiter finish switching sources before the
-                    # music program changes (see PROTOCOL.md)
-                    await asyncio.sleep(event.get("delay", 3))
                 await self.musiselect.async_send(command)
             if event.get("duration"):
                 await asyncio.sleep(event["duration"])
