@@ -3,3 +3,4 @@ __pycache__/
 .vscode/
 .idea/
 .ha_test/
+old_custom_component/
