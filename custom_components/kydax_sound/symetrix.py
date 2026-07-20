@@ -22,6 +22,10 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_PORT = 48630
 REQUEST_TIMEOUT = 1.0  # seconds to wait for a response datagram
 REQUEST_RETRIES = 3  # total attempts per command
+# Minimum gap between consecutive commands. Commands are already
+# serialized; this keeps a burst (e.g. a group slider writing every
+# channel) from outpacing the appliance's receive buffer.
+COMMAND_GAP = 0.02  # seconds
 
 type PushCallback = Callable[[dict[int, int]], None]
 
@@ -64,6 +68,7 @@ class SymetrixClient:
         self._lock = asyncio.Lock()
         self._response: asyncio.Future[str] | None = None
         self._last_error: Exception | None = None
+        self._next_send_at: float = 0.0
 
     @property
     def connected(self) -> bool:
@@ -103,9 +108,13 @@ class SymetrixClient:
                     raise SymetrixError(
                         f"cannot open UDP endpoint to {self._host}:{self._port}: {err}"
                     ) from err
+                gap = self._next_send_at - loop.time()
+                if gap > 0:
+                    await asyncio.sleep(gap)
                 self._last_error = None
                 self._response = loop.create_future()
                 self._transport.sendto(f"{command}\r".encode("ascii"))
+                self._next_send_at = loop.time() + COMMAND_GAP
                 try:
                     response = await asyncio.wait_for(
                         self._response, REQUEST_TIMEOUT

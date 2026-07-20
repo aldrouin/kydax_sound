@@ -14,6 +14,8 @@ import logging
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_PORT = 2325
+# minimum gap between consecutive sends (see symetrix.COMMAND_GAP)
+COMMAND_GAP = 0.02  # seconds
 
 
 class MusiSelectError(Exception):
@@ -40,6 +42,7 @@ class MusiSelectClient:
         self._host = host
         self._port = port
         self._transport: asyncio.DatagramTransport | None = None
+        self._next_send_at: float = 0.0
 
     @property
     def connected(self) -> bool:
@@ -64,7 +67,12 @@ class MusiSelectClient:
         try:
             if not self.connected:
                 await self.async_connect()
+            loop = asyncio.get_running_loop()
+            gap = self._next_send_at - loop.time()
+            if gap > 0:
+                await asyncio.sleep(gap)
             self._transport.sendto(command.encode("ascii"))
+            self._next_send_at = loop.time() + COMMAND_GAP
         except OSError as err:
             raise MusiSelectError(
                 f"cannot send to MusiSelect {self._host}:{self._port}: {err}"
