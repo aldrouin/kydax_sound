@@ -25,6 +25,7 @@ from homeassistant.config_entries import (
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.components.file_upload import process_uploaded_file
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.helpers.selector import (
     BooleanSelector,
     FileSelector,
@@ -74,8 +75,26 @@ PORTABLE_KEYS = (
     CONF_LANGUAGES,
 )
 DEFAULT_CONFIG_FILE = "kydax_sound.json"
-# written under www/ so it can be downloaded from a browser at /local/<name>
+# exports live under www/ (also reachable at /local/... after a restart) and
+# are served immediately from our own route
 DOWNLOAD_DIR = "www"
+_STATIC_URL = "/kydax_sound_files"
+_STATIC_REGISTERED = "kydax_sound_static_registered"
+
+
+async def _async_download_url(hass, directory: str, name: str) -> str:
+    """A URL the browser can fetch the export from, right away.
+
+    Home Assistant only serves /config/www at /local when that folder
+    already existed at startup, so a first export would 404 until a
+    restart. Registering our own static route avoids that entirely.
+    """
+    if not hass.data.get(_STATIC_REGISTERED):
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(_STATIC_URL, directory, False)]
+        )
+        hass.data[_STATIC_REGISTERED] = True
+    return f"{_STATIC_URL}/{name}"
 
 
 def _strip_comments(value: Any) -> Any:
@@ -622,12 +641,13 @@ class KydaxSoundOptionsFlow(OptionsFlow):
 
             try:
                 await self.hass.async_add_executor_job(_write)
+                url = await _async_download_url(self.hass, directory, name)
             except OSError:
                 errors["path"] = "write_failed"
             else:
                 return self.async_abort(
                     reason="exported",
-                    description_placeholders={"url": f"/local/{name}", "path": path},
+                    description_placeholders={"url": url, "path": path},
                 )
 
         return self.async_show_form(

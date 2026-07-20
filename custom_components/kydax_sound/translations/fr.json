@@ -376,7 +376,7 @@
     },
     "abort": {
       "cannot_connect": "Impossible de joindre l'appareil pour lancer le test",
-      "exported": "Configuration exportée. Téléchargez-la ici : {url}"
+      "exported": "Configuration exportée. Téléchargez-la ici : {url} (le fichier est aussi conservé dans config/www)."
     }
   },
   "services": {

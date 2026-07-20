@@ -376,7 +376,7 @@
     },
     "abort": {
       "cannot_connect": "Could not reach the appliance to run the test",
-      "exported": "Configuration exported. Download it at: {url}"
+      "exported": "Configuration exported. Download it here: {url} (the file is also kept in config/www)."
     }
   },
   "services": {
