@@ -241,11 +241,13 @@ class SymetrixClient:
         self._expect_ack(await self._async_request("FU"), "FU")
 
     async def async_ping(self) -> None:
-        """Verify the appliance responds; raises SymetrixError otherwise.
+        """Verify the appliance answers at all; raises SymetrixError otherwise.
 
-        Uses GPR D because it is read-only and side-effect free.
+        Uses GPR D because it is read-only and side-effect free, but accepts
+        ANY response - even NAK proves the device is reachable (some
+        firmware does not support GPR D itself). Only silence fails.
         """
-        await self.async_get_preset()
+        await self._async_request("GPR D")
 
     # --- push control ---------------------------------------------------------
 

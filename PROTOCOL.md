@@ -39,7 +39,7 @@ Select Jupiter App → View External Controllers (HTML export).
 | `GS2 <ctrl>` | Get value, number echoed | `<ctrl> <pos>` |
 | `GSB <start> <n>` | Block read, n ≤ 256 | 5-digit zero-padded lines; `-0001` = no such controller |
 | `GSB2 <start> <n>` | Block read with numbers | `#00009=32321` per line |
-| `GPR D` | Last loaded preset | `PrstD=0007` (0 = none) |
+| `GPR D` | Last loaded preset | `PrstD=0007` (0 = none); some firmware NAKs this — treat any reply as proof of connectivity |
 | `LP <preset>` | Load preset (doc says 1–150 here, 0–50 under GPR) | `ACK` |
 | `FU` | Flash front-panel LEDs (comms test) | `ACK` |
 | `SQ <0\|1>` | Quiet mode (keep 1) | `ACK` |
