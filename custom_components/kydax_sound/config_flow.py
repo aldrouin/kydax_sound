@@ -26,6 +26,7 @@ from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import callback
 from homeassistant.components.file_upload import process_uploaded_file
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.selector import (
     BooleanSelector,
     FileSelector,
@@ -110,17 +111,40 @@ def _strip_comments(value: Any) -> Any:
     return value
 
 
-def _export_payload(options: dict[str, Any]) -> dict[str, Any]:
+def _entity_names(hass, entry_id: str) -> dict[str, str]:
+    """Friendly name (and entity id) of every entity this entry created,
+    keyed by the unique_id suffix that identifies it."""
+    names: dict[str, str] = {}
+    if hass is None or entry_id is None:
+        return names
+    for reg_entry in er.async_entries_for_config_entry(
+        er.async_get(hass), entry_id
+    ):
+        state = hass.states.get(reg_entry.entity_id)
+        friendly = (
+            state.name
+            if state
+            else (reg_entry.name or reg_entry.original_name or reg_entry.entity_id)
+        )
+        suffix = reg_entry.unique_id.removeprefix(f"{entry_id}_")
+        names[suffix] = f"{friendly} ({reg_entry.entity_id})"
+    return names
+
+
+def _export_payload(
+    options: dict[str, Any], hass=None, entry_id: str | None = None
+) -> dict[str, Any]:
     """The portable configuration, annotated so it reads without guesswork.
 
-    Groups store channel numbers; the _channels lines spell out which
-    channel each number is. Everything prefixed with _ is a comment and is
-    ignored when the file is imported.
+    Numbers and ids are opaque on their own, so every item also carries the
+    friendly name of the entity it created in Home Assistant. Everything
+    prefixed with _ is a comment and is ignored when the file is imported.
     """
     names = {
         channel["number"]: channel.get("name", "?")
         for channel in options.get(CONF_CHANNELS, [])
     }
+    entities = _entity_names(hass, entry_id)
 
     def _label(number: int) -> str:
         return f"{names.get(number, 'unknown channel')} ({number})"
@@ -130,24 +154,62 @@ def _export_payload(options: dict[str, Any]) -> dict[str, Any]:
         if key not in options:
             continue
         value = options[key]
-        if key in (CONF_CHANNEL_GROUPS, CONF_PAUSE_GROUPS):
+        if key == CONF_CHANNELS:
             value = [
-                {**group, "_channels": [_label(n) for n in group.get("channels", [])]}
-                for group in value
-            ]
-        elif key == CONF_CHANNELS:
-            value = [
-                {**channel, "_volumes": _volume_comment(channel)}
+                _annotate(
+                    channel,
+                    entities.get(f"channel_{channel.get('number')}"),
+                    _volumes=_volume_comment(channel),
+                )
                 for channel in value
             ]
+        elif key == CONF_CHANNEL_GROUPS:
+            value = [
+                _annotate(
+                    group,
+                    entities.get(f"group_{group.get('id')}"),
+                    _channels=[_label(n) for n in group.get("channels", [])],
+                )
+                for group in value
+            ]
+        elif key == CONF_PAUSE_GROUPS:
+            value = [
+                _annotate(
+                    group,
+                    entities.get(f"pause_{group.get('id')}"),
+                    _channels=[_label(n) for n in group.get("channels", [])],
+                )
+                for group in value
+            ]
+        elif key == CONF_EVENT_BUTTONS:
+            value = [
+                _annotate(event, entities.get(f"event_{event.get('id')}"))
+                for event in value
+            ]
+        elif key == CONF_LEVELS:
+            data["_levels"] = [
+                entities.get(f"level_{level}", f"{level}%") for level in value
+            ]
+        elif key == CONF_LANGUAGES and entities.get("language"):
+            data["_languages"] = entities["language"]
         data[key] = value
     return {
         "_comment": (
             "Kydax Sound configuration. Lines starting with _ are comments "
-            "and are ignored on import. Appliance addresses are not included."
+            "naming the Home Assistant entities behind each item; they are "
+            "ignored on import. Appliance addresses are not included."
         ),
         "kydax_sound": data,
     }
+
+
+def _annotate(item: dict[str, Any], entity: str | None, **comments: Any) -> dict:
+    """Copy a configuration item with its entity name and extra comments."""
+    annotated = dict(item)
+    if entity:
+        annotated["_entity"] = entity
+    annotated.update(comments)
+    return annotated
 
 
 def _volume_comment(channel: dict[str, Any]) -> str:
@@ -632,7 +694,9 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             name = user_input["path"].strip() or DEFAULT_CONFIG_FILE
             directory = self.hass.config.path(DOWNLOAD_DIR)
             path = self.hass.config.path(DOWNLOAD_DIR, name)
-            payload = _export_payload(self._options)
+            payload = _export_payload(
+                self._options, self.hass, self.config_entry.entry_id
+            )
 
             def _write() -> None:
                 os.makedirs(directory, exist_ok=True)
