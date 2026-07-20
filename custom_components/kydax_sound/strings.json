@@ -259,16 +259,16 @@
       },
       "export": {
         "title": "Export the configuration",
-        "description": "Writes the channels and their volumes, the levels, the groups and the events to a file in your Home Assistant configuration folder. The appliance addresses are not included, so the file can be reused as a template for another restaurant.",
+        "description": "Writes the channels and their volumes, the levels, the groups and the events to a file you can download from your browser. The appliance addresses are not included, so the file can be reused as a template for another restaurant.",
         "data": {
           "path": "File name"
         }
       },
       "import": {
         "title": "Import a configuration",
-        "description": "Reads a file from your Home Assistant configuration folder and replaces the channels, levels, groups and events. The appliance addresses are left untouched.",
+        "description": "Upload a file exported from Kydax Sound. The channels, levels, groups and events are replaced; the appliance addresses are left untouched.",
         "data": {
-          "path": "File name"
+          "file": "File"
         }
       }
     },
@@ -279,7 +279,6 @@
       "invalid_levels": "Invalid levels: whole percentages between 0 and 100, separated by commas",
       "event_action_required": "Set at least a preset or a MusiSelect command",
       "invalid_event_options": "Invalid command: a single command, or one \"Label = command\" per line",
-      "file_not_found": "No such file in the configuration folder",
       "invalid_file": "The file is not a valid Kydax Sound export",
       "invalid_channels": "The file contains channels without a number, a name or their volumes",
       "write_failed": "Could not write the file - check the name and permissions",
@@ -287,7 +286,7 @@
     },
     "abort": {
       "cannot_connect": "Could not reach the appliance to run the test",
-      "exported": "Configuration written to {path}"
+      "exported": "Configuration exported. Download it at: {url}"
     }
   },
   "services": {

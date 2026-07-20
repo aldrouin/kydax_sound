@@ -9,6 +9,7 @@ Everything remains editable afterwards through the options flow.
 from __future__ import annotations
 
 import json
+import os
 import re
 from typing import Any
 from uuid import uuid4
@@ -23,8 +24,11 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_HOST, CONF_PORT
 from homeassistant.core import callback
+from homeassistant.components.file_upload import process_uploaded_file
 from homeassistant.helpers.selector import (
     BooleanSelector,
+    FileSelector,
+    FileSelectorConfig,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
@@ -68,6 +72,8 @@ PORTABLE_KEYS = (
     CONF_EVENT_BUTTONS,
 )
 DEFAULT_CONFIG_FILE = "kydax_sound.json"
+# written under www/ so it can be downloaded from a browser at /local/<name>
+DOWNLOAD_DIR = "www"
 
 
 def _export_payload(options: dict[str, Any]) -> dict[str, Any]:
@@ -531,13 +537,16 @@ class KydaxSoundOptionsFlow(OptionsFlow):
     async def async_step_export(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Write channels, levels, groups and events to a file."""
+        """Write the configuration where a browser can download it."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            path = self.hass.config.path(user_input["path"])
+            name = user_input["path"].strip() or DEFAULT_CONFIG_FILE
+            directory = self.hass.config.path(DOWNLOAD_DIR)
+            path = self.hass.config.path(DOWNLOAD_DIR, name)
             payload = _export_payload(self._options)
 
             def _write() -> None:
+                os.makedirs(directory, exist_ok=True)
                 with open(path, "w", encoding="utf-8") as handle:
                     json.dump(payload, handle, indent=2, ensure_ascii=False)
 
@@ -547,7 +556,8 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                 errors["path"] = "write_failed"
             else:
                 return self.async_abort(
-                    reason="exported", description_placeholders={"path": path}
+                    reason="exported",
+                    description_placeholders={"url": f"/local/{name}", "path": path},
                 )
 
         return self.async_show_form(
@@ -563,26 +573,25 @@ class KydaxSoundOptionsFlow(OptionsFlow):
     async def async_step_import(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Replace channels, levels, groups and events from a file."""
+        """Upload a file and replace channels, levels, groups and events."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            path = self.hass.config.path(user_input["path"])
-
             def _read() -> Any:
-                with open(path, encoding="utf-8") as handle:
-                    return json.load(handle)
+                with process_uploaded_file(self.hass, user_input["file"]) as path:
+                    with open(path, encoding="utf-8") as handle:
+                        return json.load(handle)
 
             try:
                 data = await self.hass.async_add_executor_job(_read)
-            except FileNotFoundError:
-                errors["path"] = "file_not_found"
-            except (OSError, ValueError):
-                errors["path"] = "invalid_file"
+            except (OSError, ValueError, KeyError):
+                errors["file"] = "invalid_file"
             else:
-                payload = data.get("kydax_sound", data) if isinstance(data, dict) else data
+                payload = (
+                    data.get("kydax_sound", data) if isinstance(data, dict) else data
+                )
                 problem = _validate_payload(payload)
                 if problem:
-                    errors["path"] = problem
+                    errors["file"] = problem
                 else:
                     options = self._options
                     for key in PORTABLE_KEYS:
@@ -594,7 +603,9 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             step_id="import",
             data_schema=vol.Schema(
                 {
-                    vol.Required("path", default=DEFAULT_CONFIG_FILE): TextSelector()
+                    vol.Required("file"): FileSelector(
+                        FileSelectorConfig(accept=".json,application/json")
+                    )
                 }
             ),
             errors=errors,
