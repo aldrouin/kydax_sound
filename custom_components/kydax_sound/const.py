@@ -23,6 +23,10 @@ CONF_LEVELS = "levels"  # [int] percentages offered, one toggle each
 CONF_PAUSE_GROUPS = "pause_groups"  # [{id, name, channels: [int]}]
 CONF_CHANNEL_GROUPS = "channel_groups"  # [{id, name, channels: [int]}]
 CONF_EVENT_BUTTONS = "event_buttons"  # [{id, name, preset, command, ...}]
+# MusiSelect programs offered globally, e.g. the birthday song languages:
+# [{label, command}]. One selector applies to every event that has no
+# command of its own.
+CONF_LANGUAGES = "languages"
 
 DEFAULT_LEVELS = [0, 50, 60, 70, 80, 90, 100]
 DEFAULT_LEVEL_DB = -30.0

@@ -55,7 +55,8 @@
           "event_buttons": "Boutons d'événement",
           "tests": "Tests",
           "channel_groups": "Groupes de canaux",
-          "backup": "Importer / exporter"
+          "backup": "Importer / exporter",
+          "languages": "Programmes MusiSelect"
         }
       },
       "tests": {
@@ -183,8 +184,8 @@
           "return_preset": "Préréglage de retour"
         },
         "data_description": {
-          "command": "Une commande, ex. PACINI diffSpecial 1. Pour offrir un choix (comme la langue de la chanson), écrivez-en une par ligne au format « Étiquette = commande », ex. Français = PACINI diffSpecial 1 et English = PACINI diffSpecial 2 — une liste permet alors de choisir laquelle cet événement envoie.",
-          "preset": "Un numéro de préréglage, ex. 1. Pour choisir où la musique joue, écrivez-en un par ligne au format « Zone = préréglage », ex. Bar = 1 et Salon = 3 — une liste permet alors de choisir la zone avant de lancer l'événement."
+          "command": "Laissez vide pour envoyer le programme MusiSelect sélectionné pour toute l'installation (la langue de la chanson de fête)",
+          "preset": "Laissez vide si cet événement propose un choix de zones"
         }
       },
       "edit_event": {
@@ -194,7 +195,7 @@
         }
       },
       "edit_event_form": {
-        "title": "Modifier un bouton d'événement",
+        "title": "Réglages",
         "description": "Activer l'événement charge le préréglage Symetrix et envoie la commande MusiSelect. Après la durée (ex. la longueur de la chanson), le préréglage de retour rétablit la source normale. Bloqué lorsqu'une pause est active.",
         "data": {
           "name": "Nom",
@@ -204,8 +205,8 @@
           "return_preset": "Préréglage de retour"
         },
         "data_description": {
-          "command": "Une commande, ex. PACINI diffSpecial 1. Pour offrir un choix (comme la langue de la chanson), écrivez-en une par ligne au format « Étiquette = commande », ex. Français = PACINI diffSpecial 1 et English = PACINI diffSpecial 2 — une liste permet alors de choisir laquelle cet événement envoie.",
-          "preset": "Un numéro de préréglage, ex. 1. Pour choisir où la musique joue, écrivez-en un par ligne au format « Zone = préréglage », ex. Bar = 1 et Salon = 3 — une liste permet alors de choisir la zone avant de lancer l'événement."
+          "command": "Laissez vide pour envoyer le programme MusiSelect sélectionné pour toute l'installation (la langue de la chanson de fête)",
+          "preset": "Laissez vide si cet événement propose un choix de zones"
         }
       },
       "remove_event": {
@@ -270,6 +271,98 @@
         "data": {
           "file": "Fichier"
         }
+      },
+      "event_menu": {
+        "title": "{name}",
+        "description": "Que voulez-vous modifier sur {name} ?",
+        "menu_options": {
+          "edit_event_form": "Réglages",
+          "event_zones": "Zones (choix de préréglages)"
+        }
+      },
+      "add_language": {
+        "title": "Ajouter un programme",
+        "data": {
+          "label": "Nom",
+          "command": "Commande MusiSelect"
+        },
+        "data_description": {
+          "label": "Par exemple : Français",
+          "command": "Par exemple : PACINI diffSpecial 1"
+        }
+      },
+      "edit_language": {
+        "title": "Modifier un programme",
+        "data": {
+          "language": "Programme"
+        }
+      },
+      "edit_language_form": {
+        "title": "Modifier un programme",
+        "data": {
+          "label": "Nom",
+          "command": "Commande MusiSelect"
+        },
+        "data_description": {
+          "label": "Par exemple : Français",
+          "command": "Par exemple : PACINI diffSpecial 1"
+        }
+      },
+      "remove_language": {
+        "title": "Supprimer des programmes",
+        "data": {
+          "languages": "Programmes à supprimer"
+        }
+      },
+      "event_zones": {
+        "title": "Zones de {name}",
+        "description": "Chaque entrée devient une option dans une liste : choisissez-en une avant de lancer l'événement et ce préréglage est chargé. Laissez vide pour toujours charger le préréglage de l'événement.",
+        "menu_options": {
+          "add_zone": "Ajouter une zone",
+          "edit_zone": "Modifier une zone",
+          "remove_zone": "Supprimer des zones"
+        }
+      },
+      "add_zone": {
+        "title": "Ajouter une zone",
+        "data": {
+          "label": "Étiquette",
+          "preset": "Préréglage Symetrix"
+        },
+        "data_description": {
+          "label": "Par exemple : Bar"
+        }
+      },
+      "edit_zone": {
+        "title": "Modifier une zone",
+        "data": {
+          "choice": "Entrée"
+        }
+      },
+      "edit_zone_form_event": {
+        "title": "Modifier une zone",
+        "data": {
+          "label": "Étiquette",
+          "preset": "Préréglage Symetrix"
+        },
+        "data_description": {
+          "label": "Par exemple : Bar"
+        }
+      },
+      "remove_zone": {
+        "title": "Supprimer des zones",
+        "data": {
+          "choices": "Entrées à supprimer"
+        }
+      },
+      "languages": {
+        "title": "Programmes MusiSelect",
+        "description": "Les programmes que le MusiSelect peut jouer, par exemple la chanson de fête dans chaque langue. Une seule liste s'applique à toute l'installation : le programme choisi est celui qu'envoient les événements, sauf si un événement a sa propre commande.",
+        "menu_options": {
+          "add_language": "Ajouter un programme",
+          "edit_language": "Modifier un programme",
+          "remove_language": "Supprimer des programmes"
+        }
       }
     },
     "error": {
@@ -277,12 +370,9 @@
       "duplicate_channel": "Ce numéro de contrôleur est déjà configuré",
       "channels_required": "Sélectionnez au moins un canal",
       "invalid_levels": "Niveaux invalides : pourcentages entiers entre 0 et 100, séparés par des virgules",
-      "event_action_required": "Indiquez au moins un préréglage ou une commande MusiSelect",
-      "invalid_event_options": "Commande invalide : une seule commande, ou un « Étiquette = commande » par ligne",
       "invalid_file": "Le fichier n'est pas un export Kydax Sound valide",
       "invalid_channels": "Le fichier contient des canaux sans numéro, sans nom ou sans volumes",
-      "write_failed": "Impossible d'écrire le fichier — vérifiez le nom et les permissions",
-      "invalid_event_presets": "Préréglage invalide : un nombre, ou un « Zone = préréglage » par ligne (1-150)"
+      "write_failed": "Impossible d'écrire le fichier — vérifiez le nom et les permissions"
     },
     "abort": {
       "cannot_connect": "Impossible de joindre l'appareil pour lancer le test",
@@ -359,11 +449,11 @@
       "volume_level": {
         "name": "Niveau de volume"
       },
-      "event_option": {
-        "name": "Langue {event}"
-      },
       "event_preset": {
         "name": "Zone {event}"
+      },
+      "language": {
+        "name": "Programme MusiSelect"
       }
     },
     "sensor": {

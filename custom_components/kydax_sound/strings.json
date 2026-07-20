@@ -55,7 +55,8 @@
           "event_buttons": "Event buttons",
           "tests": "Tests",
           "channel_groups": "Channel groups",
-          "backup": "Import / export"
+          "backup": "Import / export",
+          "languages": "MusiSelect programs"
         }
       },
       "tests": {
@@ -183,8 +184,8 @@
           "return_preset": "Return preset"
         },
         "data_description": {
-          "command": "One command, e.g. PACINI diffSpecial 1. To offer a choice (such as the song language), write one per line as \"Label = command\", e.g. Français = PACINI diffSpecial 1 and English = PACINI diffSpecial 2 — a selector then lets you pick which one this event sends.",
-          "preset": "One preset number, e.g. 1. To choose where the music plays, write one per line as \"Zone = preset\", e.g. Bar = 1 and Salon = 3 — a selector then lets you pick the zone before running the event."
+          "command": "Leave empty to send the MusiSelect program selected for the whole installation (the birthday song language)",
+          "preset": "Leave empty if this event offers a choice of zones"
         }
       },
       "edit_event": {
@@ -194,7 +195,7 @@
         }
       },
       "edit_event_form": {
-        "title": "Edit an event button",
+        "title": "Settings",
         "description": "Turning the event on loads the Symetrix preset and sends the MusiSelect command. After the duration (e.g. the song length), the return preset switches back to the normal source. Blocked while a pause is active.",
         "data": {
           "name": "Name",
@@ -204,8 +205,8 @@
           "return_preset": "Return preset"
         },
         "data_description": {
-          "command": "One command, e.g. PACINI diffSpecial 1. To offer a choice (such as the song language), write one per line as \"Label = command\", e.g. Français = PACINI diffSpecial 1 and English = PACINI diffSpecial 2 — a selector then lets you pick which one this event sends.",
-          "preset": "One preset number, e.g. 1. To choose where the music plays, write one per line as \"Zone = preset\", e.g. Bar = 1 and Salon = 3 — a selector then lets you pick the zone before running the event."
+          "command": "Leave empty to send the MusiSelect program selected for the whole installation (the birthday song language)",
+          "preset": "Leave empty if this event offers a choice of zones"
         }
       },
       "remove_event": {
@@ -270,6 +271,98 @@
         "data": {
           "file": "File"
         }
+      },
+      "event_menu": {
+        "title": "{name}",
+        "description": "What do you want to change on {name}?",
+        "menu_options": {
+          "edit_event_form": "Settings",
+          "event_zones": "Zones (choice of presets)"
+        }
+      },
+      "add_language": {
+        "title": "Add a program",
+        "data": {
+          "label": "Name",
+          "command": "MusiSelect command"
+        },
+        "data_description": {
+          "label": "For example: French",
+          "command": "For example: PACINI diffSpecial 1"
+        }
+      },
+      "edit_language": {
+        "title": "Edit a program",
+        "data": {
+          "language": "Program"
+        }
+      },
+      "edit_language_form": {
+        "title": "Edit a program",
+        "data": {
+          "label": "Name",
+          "command": "MusiSelect command"
+        },
+        "data_description": {
+          "label": "For example: French",
+          "command": "For example: PACINI diffSpecial 1"
+        }
+      },
+      "remove_language": {
+        "title": "Remove programs",
+        "data": {
+          "languages": "Programs to remove"
+        }
+      },
+      "event_zones": {
+        "title": "Zones of {name}",
+        "description": "Each entry becomes an option in a selector: pick one before running the event and that preset is loaded. Leave empty to always load the event's own preset.",
+        "menu_options": {
+          "add_zone": "Add a zone",
+          "edit_zone": "Edit a zone",
+          "remove_zone": "Remove zones"
+        }
+      },
+      "add_zone": {
+        "title": "Add a zone",
+        "data": {
+          "label": "Label",
+          "preset": "Symetrix preset"
+        },
+        "data_description": {
+          "label": "For example: Bar"
+        }
+      },
+      "edit_zone": {
+        "title": "Edit a zone",
+        "data": {
+          "choice": "Entry"
+        }
+      },
+      "edit_zone_form_event": {
+        "title": "Edit a zone",
+        "data": {
+          "label": "Label",
+          "preset": "Symetrix preset"
+        },
+        "data_description": {
+          "label": "For example: Bar"
+        }
+      },
+      "remove_zone": {
+        "title": "Remove zones",
+        "data": {
+          "choices": "Entries to remove"
+        }
+      },
+      "languages": {
+        "title": "MusiSelect programs",
+        "description": "The programs the MusiSelect can play, for example the birthday song in each language. One selector applies to the whole installation: the program chosen there is what events send, unless an event has a command of its own.",
+        "menu_options": {
+          "add_language": "Add a program",
+          "edit_language": "Edit a program",
+          "remove_language": "Remove programs"
+        }
       }
     },
     "error": {
@@ -277,12 +370,9 @@
       "duplicate_channel": "This controller number is already configured",
       "channels_required": "Select at least one channel",
       "invalid_levels": "Invalid levels: whole percentages between 0 and 100, separated by commas",
-      "event_action_required": "Set at least a preset or a MusiSelect command",
-      "invalid_event_options": "Invalid command: a single command, or one \"Label = command\" per line",
       "invalid_file": "The file is not a valid Kydax Sound export",
       "invalid_channels": "The file contains channels without a number, a name or their volumes",
-      "write_failed": "Could not write the file - check the name and permissions",
-      "invalid_event_presets": "Invalid preset: a number, or one \"Zone = preset\" per line (1-150)"
+      "write_failed": "Could not write the file - check the name and permissions"
     },
     "abort": {
       "cannot_connect": "Could not reach the appliance to run the test",
@@ -359,11 +449,11 @@
       "volume_level": {
         "name": "Volume level"
       },
-      "event_option": {
-        "name": "{event} language"
-      },
       "event_preset": {
         "name": "{event} zone"
+      },
+      "language": {
+        "name": "MusiSelect program"
       }
     },
     "sensor": {

@@ -28,11 +28,8 @@ async def async_setup_entry(
     entities: list[SelectEntity] = []
     if entry.options.get(CONF_CHANNELS) and hub.levels:
         entities.append(KydaxSoundVolumeLevelSelect(hub))
-    entities.extend(
-        KydaxSoundEventOptionSelect(hub, event)
-        for event in entry.options.get(CONF_EVENT_BUTTONS, [])
-        if event.get("options")
-    )
+    if hub.languages:
+        entities.append(KydaxSoundLanguageSelect(hub))
     entities.extend(
         KydaxSoundEventPresetSelect(hub, event)
         for event in entry.options.get(CONF_EVENT_BUTTONS, [])
@@ -41,34 +38,36 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-class KydaxSoundEventOptionSelect(KydaxSoundEntity, SelectEntity, RestoreEntity):
-    """Which variant an event sends — e.g. the birthday song language."""
+class KydaxSoundLanguageSelect(KydaxSoundEntity, SelectEntity, RestoreEntity):
+    """Which MusiSelect program events play — e.g. the song language.
 
-    _attr_translation_key = "event_option"
+    One selector for the whole installation: every event without a command
+    of its own sends the program chosen here.
+    """
+
+    _attr_translation_key = "language"
     _attr_icon = "mdi:translate"
 
-    def __init__(self, hub: KydaxSoundHub, event: dict) -> None:
+    def __init__(self, hub: KydaxSoundHub) -> None:
         super().__init__(hub)
-        self._event_id = event["id"]
-        self._attr_unique_id = f"{hub.entry.entry_id}_event_option_{event['id']}"
-        self._attr_translation_placeholders = {"event": event["name"]}
+        self._attr_unique_id = f"{hub.entry.entry_id}_language"
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         last = await self.async_get_last_state()
         if last is not None:
-            self._hub.set_event_option(self._event_id, last.state)
+            self._hub.set_language(last.state)
 
     @property
     def options(self) -> list[str]:
-        return self._hub.event_option_labels(self._event_id)
+        return self._hub.language_labels
 
     @property
     def current_option(self) -> str | None:
-        return self._hub.selected_event_option(self._event_id)
+        return self._hub.selected_language
 
     async def async_select_option(self, option: str) -> None:
-        self._hub.set_event_option(self._event_id, option)
+        self._hub.set_language(option)
         self.async_write_ha_state()
 
 

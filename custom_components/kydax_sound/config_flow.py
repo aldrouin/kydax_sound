@@ -44,6 +44,7 @@ from .const import (
     CONF_CHANNELS,
     CONF_CHANNEL_GROUPS,
     CONF_EVENT_BUTTONS,
+    CONF_LANGUAGES,
     CONF_LEVELS,
     CONF_MUSISELECT_HOST,
     CONF_MUSISELECT_PORT,
@@ -70,6 +71,7 @@ PORTABLE_KEYS = (
     CONF_CHANNEL_GROUPS,
     CONF_PAUSE_GROUPS,
     CONF_EVENT_BUTTONS,
+    CONF_LANGUAGES,
 )
 DEFAULT_CONFIG_FILE = "kydax_sound.json"
 # written under www/ so it can be downloaded from a browser at /local/<name>
@@ -243,97 +245,6 @@ def _channel_suggested(channel: dict[str, Any], levels: list[int]) -> dict[str, 
     return suggested
 
 
-class InvalidCommands(ValueError):
-    """The MusiSelect command field could not be parsed."""
-
-
-def _parse_commands(text: str) -> tuple[str | None, list[dict[str, Any]] | None]:
-    """Parse the MusiSelect command field.
-
-    Accepted forms, one per line:
-      PACINI diffSpecial 1     a single command for the event
-      Label = command          a choice offered through a selector, e.g.
-                               the song language
-
-    Returns (command, choices) with at most one set; (None, None) when the
-    field is empty.
-    """
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    if not lines:
-        return None, None
-    if any("=" in line for line in lines):
-        choices: list[dict[str, Any]] = []
-        for line in lines:
-            label, sep, command = line.partition("=")
-            if not sep or not label.strip() or not command.strip():
-                raise InvalidCommands(line)
-            choices.append(
-                {"label": label.strip(), "command": command.strip()}
-            )
-        return None, choices
-    if len(lines) > 1:
-        # several commands with no labels: we would not know how to offer them
-        raise InvalidCommands(lines[1])
-    return lines[0], None
-
-
-def _format_commands(event: dict[str, Any]) -> str:
-    """The command field's text for an existing event."""
-    if event.get("options"):
-        return "\n".join(
-            f"{o['label']} = {o.get('command', '')}" for o in event["options"]
-        )
-    return event.get("command", "")
-
-
-class InvalidPresets(ValueError):
-    """The preset field could not be parsed."""
-
-
-def _parse_presets(text: str) -> tuple[int | None, list[dict[str, Any]] | None]:
-    """Parse the Symetrix preset field.
-
-    Accepted forms, one per line:
-      4              one preset for the event
-      Zone = 4       a choice offered through a selector, e.g. which area
-                     the music plays in
-
-    Returns (preset, choices) with at most one set; (None, None) when empty.
-    """
-    lines = [line.strip() for line in text.splitlines() if line.strip()]
-    if not lines:
-        return None, None
-
-    def _number(value: str, line: str) -> int:
-        if not value.isdigit() or not 1 <= int(value) <= 150:
-            raise InvalidPresets(line)
-        return int(value)
-
-    if any("=" in line for line in lines):
-        choices: list[dict[str, Any]] = []
-        for line in lines:
-            label, sep, preset = line.partition("=")
-            if not sep or not label.strip():
-                raise InvalidPresets(line)
-            choices.append(
-                {"label": label.strip(), "preset": _number(preset.strip(), line)}
-            )
-        return None, choices
-    if len(lines) > 1:
-        raise InvalidPresets(lines[1])
-    return _number(lines[0], lines[0]), None
-
-
-def _format_presets(event: dict[str, Any]) -> str:
-    """The preset field's text for an existing event."""
-    if event.get("preset_options"):
-        return "\n".join(
-            f"{o['label']} = {o['preset']}" for o in event["preset_options"]
-        )
-    preset = event.get("preset")
-    return "" if preset is None else str(preset)
-
-
 def _parse_level_list(text: str) -> list[int] | None:
     """Parse "0, 50, 60, 70" into a sorted unique list; None if invalid."""
     values: list[int] = []
@@ -479,6 +390,8 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         self._edit_event_id: str | None = None
         self._edit_channel_number: int | None = None
         self._edit_cgroup_id: str | None = None
+        self._edit_choice_index: int | None = None
+        self._edit_language_index: int | None = None
 
     @property
     def _options(self) -> dict[str, Any]:
@@ -520,9 +433,113 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                 "levels",
                 "pause_groups",
                 "event_buttons",
+                "languages",
                 "backup",
                 "tests",
             ],
+        )
+
+    # --- MusiSelect programs (languages) --------------------------------------
+
+    def _language_select_options(self) -> list[SelectOptionDict]:
+        return [
+            SelectOptionDict(value=str(index), label=language["label"])
+            for index, language in enumerate(self._options.get(CONF_LANGUAGES, []))
+        ]
+
+    def _language_schema(self) -> vol.Schema:
+        return vol.Schema(
+            {
+                vol.Required("label"): TextSelector(),
+                vol.Required("command"): TextSelector(),
+            }
+        )
+
+    def _save_languages(self, languages: list[dict]) -> ConfigFlowResult:
+        options = self._options
+        options[CONF_LANGUAGES] = languages
+        return self._save(options)
+
+    async def async_step_languages(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        menu = ["add_language"]
+        if self._options.get(CONF_LANGUAGES):
+            menu += ["edit_language", "remove_language"]
+        return self.async_show_menu(step_id="languages", menu_options=menu)
+
+    async def async_step_add_language(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            languages = list(self._options.get(CONF_LANGUAGES, []))
+            languages.append(dict(user_input))
+            return self._save_languages(languages)
+        return self.async_show_form(
+            step_id="add_language", data_schema=self._language_schema()
+        )
+
+    async def async_step_edit_language(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            self._edit_language_index = int(user_input["language"])
+            return await self.async_step_edit_language_form()
+        return self.async_show_form(
+            step_id="edit_language",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("language"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=self._language_select_options(),
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def async_step_edit_language_form(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        languages = list(self._options.get(CONF_LANGUAGES, []))
+        index = self._edit_language_index
+        if index is None or not 0 <= index < len(languages):
+            return await self.async_step_languages()
+        if user_input is not None:
+            languages[index] = dict(user_input)
+            return self._save_languages(languages)
+        return self.async_show_form(
+            step_id="edit_language_form",
+            data_schema=self.add_suggested_values_to_schema(
+                self._language_schema(), languages[index]
+            ),
+        )
+
+    async def async_step_remove_language(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            removed = {int(index) for index in user_input.get("languages", [])}
+            languages = [
+                language
+                for index, language in enumerate(self._options.get(CONF_LANGUAGES, []))
+                if index not in removed
+            ]
+            return self._save_languages(languages)
+        return self.async_show_form(
+            step_id="remove_language",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("languages", default=[]): SelectSelector(
+                        SelectSelectorConfig(
+                            options=self._language_select_options(),
+                            multiple=True,
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    )
+                }
+            ),
         )
 
     # --- import / export ------------------------------------------------------
@@ -1105,71 +1122,54 @@ class KydaxSoundOptionsFlow(OptionsFlow):
     # --- event buttons --------------------------------------------------------
 
     def _event_schema(self) -> vol.Schema:
+        """The event's own settings; the choices are managed separately."""
         return vol.Schema(
             {
                 vol.Required("name"): TextSelector(),
-                vol.Optional("preset"): vol.Any(
-                    None, TextSelector(TextSelectorConfig(multiline=True))
-                ),
-                vol.Optional("command"): vol.Any(
-                    None, TextSelector(TextSelectorConfig(multiline=True))
-                ),
+                vol.Optional("preset"): _optional_int(1, 150),
+                vol.Optional("command"): vol.Any(None, TextSelector()),
                 vol.Optional("duration"): _optional_int(1, 3600, "s"),
                 vol.Optional("return_preset"): _optional_int(1, 150),
             }
         )
 
     @staticmethod
-    def _event_from_input(event_id: str, user_input: dict[str, Any]) -> dict[str, Any]:
-        event: dict[str, Any] = {
-            "id": event_id,
-            "name": user_input["name"],
-        }
-        preset, preset_choices = _parse_presets(str(user_input.get("preset") or ""))
-        if preset_choices:
-            event["preset_options"] = preset_choices
-        elif preset:
-            event["preset"] = preset
-        command, choices = _parse_commands(user_input.get("command") or "")
-        if choices:
-            event["options"] = choices
-        elif command:
+    def _event_from_input(
+        event_id: str, user_input: dict[str, Any], existing: dict | None = None
+    ) -> dict[str, Any]:
+        """Build an event, preserving any choices it already has."""
+        event: dict[str, Any] = {"id": event_id, "name": user_input["name"]}
+        if user_input.get("preset"):
+            event["preset"] = user_input["preset"]
+        command = (user_input.get("command") or "").strip()
+        if command:
             event["command"] = command
         if user_input.get("duration"):
             event["duration"] = user_input["duration"]
         if user_input.get("return_preset"):
             event["return_preset"] = user_input["return_preset"]
+        for key in ("options", "preset_options"):
+            if existing and existing.get(key):
+                event[key] = existing[key]
         return event
 
-    @staticmethod
-    def _event_options_valid(user_input: dict[str, Any]) -> bool:
-        """False only when the command text is present but malformed."""
-        try:
-            _parse_commands(user_input.get("command") or "")
-        except InvalidCommands:
-            return False
-        return True
+    def _current_event(self) -> dict | None:
+        return next(
+            (
+                e
+                for e in self._options.get(CONF_EVENT_BUTTONS, [])
+                if e["id"] == self._edit_event_id
+            ),
+            None,
+        )
 
-    @staticmethod
-    def _event_presets_valid(user_input: dict[str, Any]) -> bool:
-        """False only when the preset text is present but malformed."""
-        try:
-            _parse_presets(str(user_input.get("preset") or ""))
-        except InvalidPresets:
-            return False
-        return True
-
-    @staticmethod
-    def _event_action_valid(user_input: dict[str, Any]) -> bool:
-        """An event must do something: load a preset or send a command."""
-        try:
-            command, choices = _parse_commands(user_input.get("command") or "")
-            preset, preset_choices = _parse_presets(
-                str(user_input.get("preset") or "")
-            )
-        except (InvalidCommands, InvalidPresets):
-            return False
-        return bool(preset or preset_choices or command or choices)
+    def _save_event(self, updated: dict) -> ConfigFlowResult:
+        options = self._options
+        options[CONF_EVENT_BUTTONS] = [
+            updated if e["id"] == updated["id"] else e
+            for e in options.get(CONF_EVENT_BUTTONS, [])
+        ]
+        return self._save(options)
 
     async def async_step_event_buttons(
         self, user_input: dict[str, Any] | None = None
@@ -1184,18 +1184,11 @@ class KydaxSoundOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not self._event_presets_valid(user_input):
-                errors["preset"] = "invalid_event_presets"
-            elif not self._event_options_valid(user_input):
-                errors["command"] = "invalid_event_options"
-            elif not self._event_action_valid(user_input):
-                errors["base"] = "event_action_required"
-            else:
-                options = self._options
-                events = list(options.get(CONF_EVENT_BUTTONS, []))
-                events.append(self._event_from_input(uuid4().hex[:8], user_input))
-                options[CONF_EVENT_BUTTONS] = events
-                return self._save(options)
+            options = self._options
+            events = list(options.get(CONF_EVENT_BUTTONS, []))
+            events.append(self._event_from_input(uuid4().hex[:8], user_input))
+            options[CONF_EVENT_BUTTONS] = events
+            return self._save(options)
 
         return self.async_show_form(
             step_id="add_event", data_schema=self._event_schema(), errors=errors
@@ -1206,7 +1199,7 @@ class KydaxSoundOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         if user_input is not None:
             self._edit_event_id = user_input["event"]
-            return await self.async_step_edit_event_form()
+            return await self.async_step_event_menu()
 
         return self.async_show_form(
             step_id="edit_event",
@@ -1222,41 +1215,189 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             ),
         )
 
+    async def async_step_event_menu(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """What to change on the selected event."""
+        current = self._current_event()
+        if current is None:
+            return await self.async_step_event_buttons()
+        return self.async_show_menu(
+            step_id="event_menu",
+            menu_options=["edit_event_form", "event_zones"],
+            description_placeholders={"name": current["name"]},
+        )
+
     async def async_step_edit_event_form(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        options = self._options
-        events = list(options.get(CONF_EVENT_BUTTONS, []))
-        current = next(
-            (e for e in events if e["id"] == self._edit_event_id), None
-        )
+        current = self._current_event()
         if current is None:
             return await self.async_step_event_buttons()
 
-        errors: dict[str, str] = {}
         if user_input is not None:
-            if not self._event_presets_valid(user_input):
-                errors["preset"] = "invalid_event_presets"
-            elif not self._event_options_valid(user_input):
-                errors["command"] = "invalid_event_options"
-            elif not self._event_action_valid(user_input):
-                errors["base"] = "event_action_required"
-            else:
-                updated = self._event_from_input(current["id"], user_input)
-                options[CONF_EVENT_BUTTONS] = [
-                    updated if e["id"] == current["id"] else e for e in events
-                ]
-                return self._save(options)
+            return self._save_event(
+                self._event_from_input(current["id"], user_input, current)
+            )
 
-        suggested = dict(current)
-        suggested["command"] = _format_commands(current)
-        suggested["preset"] = _format_presets(current)
         return self.async_show_form(
             step_id="edit_event_form",
             data_schema=self.add_suggested_values_to_schema(
-                self._event_schema(), suggested
+                self._event_schema(), current
             ),
-            errors=errors,
+        )
+
+    # --- event choices (languages and zones) ----------------------------------
+
+    def _choice_select_options(self, key: str) -> list[SelectOptionDict]:
+        current = self._current_event() or {}
+        return [
+            SelectOptionDict(value=str(index), label=choice["label"])
+            for index, choice in enumerate(current.get(key, []))
+        ]
+
+    def _choice_schema(self, key: str) -> vol.Schema:
+        return vol.Schema(
+            {
+                vol.Required("label"): TextSelector(),
+                vol.Required("preset"): vol.All(
+                    NumberSelector(
+                        NumberSelectorConfig(
+                            min=1, max=150, step=1, mode=NumberSelectorMode.BOX
+                        )
+                    ),
+                    vol.Coerce(int),
+                ),
+            }
+        )
+
+    def _save_choices(self, key: str, choices: list[dict]) -> ConfigFlowResult:
+        current = dict(self._current_event() or {})
+        if choices:
+            current[key] = choices
+        else:
+            current.pop(key, None)
+        return self._save_event(current)
+
+    async def _async_choice_menu(self, key: str, step: str) -> ConfigFlowResult:
+        current = self._current_event()
+        if current is None:
+            return await self.async_step_event_buttons()
+        prefix = "zone"
+        menu = [f"add_{prefix}"]
+        if current.get(key):
+            menu += [f"edit_{prefix}", f"remove_{prefix}"]
+        return self.async_show_menu(
+            step_id=step,
+            menu_options=menu,
+            description_placeholders={"name": current["name"]},
+        )
+
+    async def _async_add_choice(
+        self, key: str, step: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        current = self._current_event()
+        if current is None:
+            return await self.async_step_event_buttons()
+        if user_input is not None:
+            choices = list(current.get(key, []))
+            choices.append(dict(user_input))
+            return self._save_choices(key, choices)
+        return self.async_show_form(
+            step_id=step, data_schema=self._choice_schema(key)
+        )
+
+    async def _async_edit_choice(
+        self, key: str, step: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            self._edit_choice_index = int(user_input["choice"])
+            return await self.async_step_edit_zone_form_event()
+        return self.async_show_form(
+            step_id=step,
+            data_schema=vol.Schema(
+                {
+                    vol.Required("choice"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=self._choice_select_options(key),
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def _async_edit_choice_form(
+        self, key: str, step: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        current = self._current_event()
+        if current is None:
+            return await self.async_step_event_buttons()
+        choices = list(current.get(key, []))
+        index = self._edit_choice_index
+        if index is None or not 0 <= index < len(choices):
+            return await self._async_choice_menu(key, "event_zones")
+        if user_input is not None:
+            choices[index] = dict(user_input)
+            return self._save_choices(key, choices)
+        return self.async_show_form(
+            step_id=step,
+            data_schema=self.add_suggested_values_to_schema(
+                self._choice_schema(key), choices[index]
+            ),
+        )
+
+    async def _async_remove_choice(
+        self, key: str, step: str, user_input: dict[str, Any] | None
+    ) -> ConfigFlowResult:
+        current = self._current_event()
+        if current is None:
+            return await self.async_step_event_buttons()
+        if user_input is not None:
+            removed = {int(index) for index in user_input.get("choices", [])}
+            choices = [
+                choice
+                for index, choice in enumerate(current.get(key, []))
+                if index not in removed
+            ]
+            return self._save_choices(key, choices)
+        return self.async_show_form(
+            step_id=step,
+            data_schema=vol.Schema(
+                {
+                    vol.Required("choices", default=[]): SelectSelector(
+                        SelectSelectorConfig(
+                            options=self._choice_select_options(key),
+                            multiple=True,
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    )
+                }
+            ),
+        )
+
+    # zones: a choice of Symetrix presets
+    async def async_step_event_zones(self, user_input=None) -> ConfigFlowResult:
+        return await self._async_choice_menu("preset_options", "event_zones")
+
+    async def async_step_add_zone(self, user_input=None) -> ConfigFlowResult:
+        return await self._async_add_choice(
+            "preset_options", "add_zone", user_input
+        )
+
+    async def async_step_edit_zone(self, user_input=None) -> ConfigFlowResult:
+        return await self._async_edit_choice(
+            "preset_options", "edit_zone", user_input
+        )
+
+    async def async_step_edit_zone_form_event(self, user_input=None) -> ConfigFlowResult:
+        return await self._async_edit_choice_form(
+            "preset_options", "edit_zone_form_event", user_input
+        )
+
+    async def async_step_remove_zone(self, user_input=None) -> ConfigFlowResult:
+        return await self._async_remove_choice(
+            "preset_options", "remove_zone", user_input
         )
 
     async def async_step_remove_event(

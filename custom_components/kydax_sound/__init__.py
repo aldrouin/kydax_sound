@@ -17,6 +17,7 @@ from .const import (
     CONF_CHANNELS,
     CONF_CHANNEL_GROUPS,
     CONF_EVENT_BUTTONS,
+    CONF_LANGUAGES,
     CONF_LEVELS,
     CONF_PAUSE_GROUPS,
     DEFAULT_LEVEL_DB,
@@ -140,13 +141,27 @@ def _async_migrate_options(
         options[CONF_CHANNELS] = channels
 
     # events: the settle delay was removed once preset and command started
-    # going out back-to-back
+    # going out back-to-back, and per-event command choices became the
+    # global language list
     events = []
+    languages = list(options.get(CONF_LANGUAGES, []))
+    known = {language["label"] for language in languages}
     for event in options.get(CONF_EVENT_BUTTONS, []):
         event = dict(event)
         event.pop("delay", None)
+        for choice in event.pop("options", []) or []:
+            if choice.get("label") and choice.get("label") not in known:
+                languages.append(
+                    {
+                        "label": choice["label"],
+                        "command": choice.get("command", ""),
+                    }
+                )
+                known.add(choice["label"])
         events.append(event)
     options[CONF_EVENT_BUTTONS] = events
+    if languages or CONF_LANGUAGES in options:
+        options[CONF_LANGUAGES] = languages
 
     options.setdefault(CONF_LEVELS, DEFAULT_LEVELS)
     options.setdefault(CONF_PAUSE_GROUPS, [])
@@ -302,11 +317,8 @@ def _async_prune_stale_entities(
         for event in entry.options.get(CONF_EVENT_BUTTONS, [])
         if event.get("duration")
     )
-    valid_ids.update(
-        f"{entry.entry_id}_event_option_{event['id']}"
-        for event in entry.options.get(CONF_EVENT_BUTTONS, [])
-        if event.get("options")
-    )
+    if entry.options.get(CONF_LANGUAGES):
+        valid_ids.add(f"{entry.entry_id}_language")
     valid_ids.update(
         f"{entry.entry_id}_event_preset_{event['id']}"
         for event in entry.options.get(CONF_EVENT_BUTTONS, [])
@@ -335,6 +347,7 @@ def _async_prune_stale_entities(
             "_pause_" in unique_id
             or "_scene_" in unique_id
             or "_event_" in unique_id
+            or unique_id.endswith("_language")
             or "_channel_" in unique_id
             or "_group_" in unique_id
             or unique_id.endswith("_volume_scene")

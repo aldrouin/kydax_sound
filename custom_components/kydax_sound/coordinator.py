@@ -22,6 +22,7 @@ from .const import (
     CONF_CHANNELS,
     CONF_CHANNEL_GROUPS,
     CONF_EVENT_BUTTONS,
+    CONF_LANGUAGES,
     CONF_LEVELS,
     CONF_MUSISELECT_HOST,
     CONF_MUSISELECT_PORT,
@@ -111,8 +112,9 @@ class KydaxSoundHub:
             for event in entry.options.get(CONF_EVENT_BUTTONS, [])
         }
         self.event_runs: dict[str, EventRun] = {}
-        # chosen option label per event (e.g. the birthday song language)
-        self.event_selection: dict[str, str] = {}
+        # MusiSelect programs offered globally and the one currently chosen
+        self.languages: list[dict] = entry.options.get(CONF_LANGUAGES, [])
+        self.language: str | None = None
         # chosen preset label per event (e.g. which zone it plays in)
         self.event_preset_selection: dict[str, str] = {}
         self.pause_state: dict[str, PauseState] = {
@@ -456,41 +458,37 @@ class KydaxSoundHub:
     def any_event_running(self) -> bool:
         return bool(self.event_runs)
 
-    def event_option_labels(self, event_id: str) -> list[str]:
-        event = self.event_buttons.get(event_id, {})
-        return [option["label"] for option in event.get("options", [])]
+    @property
+    def language_labels(self) -> list[str]:
+        return [language["label"] for language in self.languages]
 
-    def selected_event_option(self, event_id: str) -> str | None:
-        """The chosen option label, defaulting to the first one."""
-        labels = self.event_option_labels(event_id)
+    @property
+    def selected_language(self) -> str | None:
+        """The chosen MusiSelect program, defaulting to the first one."""
+        labels = self.language_labels
         if not labels:
             return None
-        chosen = self.event_selection.get(event_id)
-        return chosen if chosen in labels else labels[0]
+        return self.language if self.language in labels else labels[0]
 
     @callback
-    def set_event_option(self, event_id: str, label: str) -> None:
-        if label in self.event_option_labels(event_id):
-            self.event_selection[event_id] = label
+    def set_language(self, label: str) -> None:
+        if label in self.language_labels:
+            self.language = label
             self._dispatch()
 
-    def _selected_option(self, event: dict) -> dict | None:
-        options = event.get("options")
-        if not options:
-            return None
-        label = self.selected_event_option(event["id"])
-        for option in options:
-            if option["label"] == label:
-                return option
-        return options[0]
-
     def _event_command(self, event: dict) -> str | None:
-        """The MusiSelect command to send: the selected choice's, or the
-        event's own when it has no choices."""
-        option = self._selected_option(event)
-        if option is None:
-            return event.get("command")
-        return option.get("command")
+        """The MusiSelect command to send.
+
+        An event's own command wins; otherwise the globally selected
+        program (the birthday song language) is used.
+        """
+        if event.get("command"):
+            return event["command"]
+        label = self.selected_language
+        for language in self.languages:
+            if language["label"] == label:
+                return language.get("command")
+        return None
 
     def event_preset_labels(self, event_id: str) -> list[str]:
         event = self.event_buttons.get(event_id, {})
@@ -595,7 +593,7 @@ class KydaxSoundHub:
                 label
                 for label in (
                     self.selected_event_preset(event["id"]),
-                    self.selected_event_option(event["id"]),
+                    None if event.get("command") else self.selected_language,
                 )
                 if label
             ]
