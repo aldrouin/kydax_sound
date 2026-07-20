@@ -15,7 +15,7 @@ DEFAULT_MUSISELECT_PORT = 2325
 POLL_SECONDS = 30
 
 # options keys
-# channels: [{number, name, volume_50, volume_100, default_pct}]
+# channels: [{number, name, volume_50, volume_100}]
 # volume_50/volume_100 are the channel's calibrated dB at 50% and 100%;
 # other percentages are interpolated linearly in dB.
 CONF_CHANNELS = "channels"
@@ -26,7 +26,6 @@ CONF_EVENT_BUTTONS = "event_buttons"  # [{id, name, preset, command, delay, dura
 DEFAULT_LEVELS = [0, 50, 60, 70, 80, 90, 100]
 DEFAULT_VOLUME_50 = -33.0
 DEFAULT_VOLUME_100 = -11.0
-DEFAULT_PCT = 70
 
 # Standard Jupiter volume fader range (PROTOCOL.md). Controller position 0
 # maps to the minimum (OFF) and 65535 to the maximum.

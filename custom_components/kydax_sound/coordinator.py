@@ -27,7 +27,6 @@ from .const import (
     CONF_PAUSE_GROUPS,
     DEFAULT_LEVELS,
     DEFAULT_MUSISELECT_PORT,
-    DEFAULT_PCT,
     DEFAULT_PORT,
     DEFAULT_VOLUME_50,
     DEFAULT_VOLUME_100,
@@ -336,30 +335,6 @@ class KydaxSoundHub:
                 self._dispatch()
         else:
             self._dispatch()
-
-    # --- channel defaults ----------------------------------------------------
-
-    async def async_reset_volumes(self) -> None:
-        """Set every configured channel to its own default percentage.
-
-        Paused channels are skipped, like everywhere else.
-        """
-        paused = self.paused_channels
-        try:
-            for number, channel in self.channels.items():
-                if number in paused:
-                    continue
-                await self.symetrix.async_set(
-                    number,
-                    channel_position_for_pct(
-                        channel, channel.get("default_pct", DEFAULT_PCT)
-                    ),
-                )
-        except SymetrixError as err:
-            raise HomeAssistantError(f"Volume reset failed: {err}") from err
-        # per-channel defaults don't correspond to a single level
-        self.active_level = None
-        self._dispatch()
 
     # --- polling -----------------------------------------------------------
 

@@ -147,7 +147,6 @@ def _async_prune_stale_entities(
         if event.get("duration")
     )
     if entry.options.get(CONF_CHANNELS):
-        valid_ids.add(f"{entry.entry_id}_reset_volumes")
         levels = entry.options.get(CONF_LEVELS, DEFAULT_LEVELS)
         valid_ids.update(f"{entry.entry_id}_level_{level}" for level in levels)
         if levels:

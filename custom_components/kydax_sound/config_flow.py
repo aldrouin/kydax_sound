@@ -43,13 +43,13 @@ from .const import (
     CONF_PAUSE_GROUPS,
     DEFAULT_LEVELS,
     DEFAULT_MUSISELECT_PORT,
-    DEFAULT_PCT,
     DEFAULT_PORT,
     DEFAULT_VOLUME_50,
     DEFAULT_VOLUME_100,
     DOMAIN,
     FADER_MAX_DB,
     FADER_MIN_DB,
+    channel_db_for_pct,
 )
 from .symetrix import SymetrixClient, SymetrixError
 
@@ -80,21 +80,6 @@ def _db_selector():
     )
 
 
-def _pct_selector():
-    return vol.All(
-        NumberSelector(
-            NumberSelectorConfig(
-                min=0,
-                max=100,
-                step=1,
-                mode=NumberSelectorMode.BOX,
-                unit_of_measurement="%",
-            )
-        ),
-        vol.Coerce(int),
-    )
-
-
 CONNECTION_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): TextSelector(),
@@ -114,7 +99,6 @@ MUSISELECT_SCHEMA = vol.Schema(
 CHANNEL_FIELDS = {
     vol.Required("volume_50", default=DEFAULT_VOLUME_50): _db_selector(),
     vol.Required("volume_100", default=DEFAULT_VOLUME_100): _db_selector(),
-    vol.Required("default_pct", default=DEFAULT_PCT): _pct_selector(),
 }
 
 CHANNEL_SCHEMA = vol.Schema(
@@ -157,7 +141,6 @@ def _channel_from_input(user_input: dict[str, Any]) -> dict[str, Any]:
         "name": user_input["name"].strip(),
         "volume_50": user_input["volume_50"],
         "volume_100": user_input["volume_100"],
-        "default_pct": user_input["default_pct"],
     }
 
 
@@ -419,6 +402,19 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             ),
         )
 
+    def _calibration_preview(self, channel: dict[str, Any]) -> str:
+        """What dB this channel gets at each configured level, for the form."""
+        parts = []
+        for level in self._options.get(CONF_LEVELS, DEFAULT_LEVELS):
+            db = channel_db_for_pct(
+                channel.get("volume_50", DEFAULT_VOLUME_50),
+                channel.get("volume_100", DEFAULT_VOLUME_100),
+                level,
+            )
+            value = "off" if db is None else f"{round(db, 1)} dB"
+            parts.append(f"{level}% → {value}")
+        return " · ".join(parts)
+
     async def async_step_edit_channel_form(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -464,6 +460,10 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                 CHANNEL_SCHEMA, current
             ),
             errors=errors,
+            description_placeholders={
+                "name": current["name"],
+                "preview": self._calibration_preview(current),
+            },
         )
 
     async def async_step_remove_channel(

@@ -1,7 +1,4 @@
-"""Button platform for Kydax Sound.
-
-- reset-to-default-volumes button
-- diagnostic flash-LEDs button
+"""Button platform for Kydax Sound: the diagnostic flash-LEDs button.
 
 Volume levels and events are switches (switch.py) so their state is visible.
 """
@@ -14,7 +11,6 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import KydaxSoundConfigEntry
-from .const import CONF_CHANNELS
 from .coordinator import KydaxSoundHub
 from .entity import KydaxSoundEntity
 
@@ -25,17 +21,18 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the buttons."""
-    hub = entry.runtime_data
-    entities: list[ButtonEntity] = [FlashUnitButton(hub)]
-    if entry.options.get(CONF_CHANNELS):
-        entities.append(ResetVolumesButton(hub))
-    async_add_entities(entities)
+    async_add_entities([FlashUnitButton(entry.runtime_data)])
 
 
 class FlashUnitButton(KydaxSoundEntity, ButtonEntity):
-    """Flashes the appliance's front panel LEDs — a visible comms test."""
+    """Flashes the appliance's front panel LEDs — a visible comms test.
+
+    Disabled by default: it stays listed on the integration's device page
+    and can be enabled there when needed, but is not an active entity.
+    """
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_entity_registry_enabled_default = False
     _attr_translation_key = "flash_unit"
 
     def __init__(self, hub: KydaxSoundHub) -> None:
@@ -44,17 +41,3 @@ class FlashUnitButton(KydaxSoundEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self._hub.symetrix.async_flash()
-
-
-class ResetVolumesButton(KydaxSoundEntity, ButtonEntity):
-    """Sets every configured channel to its default volume percentage."""
-
-    _attr_translation_key = "reset_volumes"
-    _attr_icon = "mdi:volume-equal"
-
-    def __init__(self, hub: KydaxSoundHub) -> None:
-        super().__init__(hub)
-        self._attr_unique_id = f"{hub.entry.entry_id}_reset_volumes"
-
-    async def async_press(self) -> None:
-        await self._hub.async_reset_volumes()

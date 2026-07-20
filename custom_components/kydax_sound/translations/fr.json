@@ -25,7 +25,6 @@
           "name": "Nom",
           "volume_50": "Volume à 50 %",
           "volume_100": "Volume à 100 %",
-          "default_pct": "Pourcentage par défaut",
           "add_another": "Ajouter un autre canal"
         }
       }
@@ -76,8 +75,7 @@
           "number": "Numéro de contrôleur",
           "name": "Nom",
           "volume_50": "Volume à 50 %",
-          "volume_100": "Volume à 100 %",
-          "default_pct": "Pourcentage par défaut"
+          "volume_100": "Volume à 100 %"
         }
       },
       "edit_channel": {
@@ -88,13 +86,12 @@
       },
       "edit_channel_form": {
         "title": "Modifier un canal",
-        "description": "Le canal joue au « Volume à 50 % » pour le niveau 50 % et au « Volume à 100 % » pour le niveau 100 % ; les autres pourcentages sont calculés entre ces deux points. 0 % = toujours coupé.",
+        "description": "Le canal joue au « Volume à 50 % » pour le niveau 50 % et au « Volume à 100 % » pour le niveau 100 % ; les autres pourcentages sont calculés entre ces deux points. 0 % = toujours coupé.\n\nAvec la calibration actuelle, {name} joue à : {preview}",
         "data": {
           "number": "Numéro de contrôleur",
           "name": "Nom",
           "volume_50": "Volume à 50 %",
-          "volume_100": "Volume à 100 %",
-          "default_pct": "Pourcentage par défaut"
+          "volume_100": "Volume à 100 %"
         }
       },
       "remove_channel": {
@@ -105,7 +102,7 @@
       },
       "levels": {
         "title": "Niveaux de volume",
-        "description": "Les niveaux de pourcentage offerts, séparés par des virgules (ex. 0, 50, 60, 70, 80, 90, 100). Chaque niveau devient un bouton.",
+        "description": "Les niveaux de pourcentage offerts, séparés par des virgules (ex. 0, 50, 60, 70, 80, 90, 100). Chaque niveau devient une bascule.",
         "data": {
           "levels": "Niveaux"
         }
@@ -206,7 +203,7 @@
   "services": {
     "set_level": {
       "name": "Régler le niveau de volume",
-      "description": "Règle chaque canal à son volume calibré pour un pourcentage. Tout pourcentage de 0 à 100 fonctionne, pas seulement les boutons de niveau configurés. Les canaux en pause sont ignorés.",
+      "description": "Règle chaque canal à son volume calibré pour un pourcentage. Tout pourcentage de 0 à 100 fonctionne, pas seulement les bascules de niveau configurées. Les canaux en pause sont ignorés.",
       "fields": {
         "level": {
           "name": "Niveau",
@@ -239,9 +236,6 @@
     "button": {
       "flash_unit": {
         "name": "Faire clignoter les voyants de l'appareil"
-      },
-      "reset_volumes": {
-        "name": "Réinitialiser les volumes par défaut"
       }
     },
     "switch": {
