@@ -183,7 +183,8 @@
           "return_preset": "Préréglage de retour"
         },
         "data_description": {
-          "command": "Une commande, ex. PACINI diffSpecial 1. Pour offrir un choix (comme la langue de la chanson), écrivez-en une par ligne au format « Étiquette = commande », ex. Français = PACINI diffSpecial 1 et English = PACINI diffSpecial 2 — une liste permet alors de choisir laquelle cet événement envoie."
+          "command": "Une commande, ex. PACINI diffSpecial 1. Pour offrir un choix (comme la langue de la chanson), écrivez-en une par ligne au format « Étiquette = commande », ex. Français = PACINI diffSpecial 1 et English = PACINI diffSpecial 2 — une liste permet alors de choisir laquelle cet événement envoie.",
+          "preset": "Un numéro de préréglage, ex. 1. Pour choisir où la musique joue, écrivez-en un par ligne au format « Zone = préréglage », ex. Bar = 1 et Salon = 3 — une liste permet alors de choisir la zone avant de lancer l'événement."
         }
       },
       "edit_event": {
@@ -203,7 +204,8 @@
           "return_preset": "Préréglage de retour"
         },
         "data_description": {
-          "command": "Une commande, ex. PACINI diffSpecial 1. Pour offrir un choix (comme la langue de la chanson), écrivez-en une par ligne au format « Étiquette = commande », ex. Français = PACINI diffSpecial 1 et English = PACINI diffSpecial 2 — une liste permet alors de choisir laquelle cet événement envoie."
+          "command": "Une commande, ex. PACINI diffSpecial 1. Pour offrir un choix (comme la langue de la chanson), écrivez-en une par ligne au format « Étiquette = commande », ex. Français = PACINI diffSpecial 1 et English = PACINI diffSpecial 2 — une liste permet alors de choisir laquelle cet événement envoie.",
+          "preset": "Un numéro de préréglage, ex. 1. Pour choisir où la musique joue, écrivez-en un par ligne au format « Zone = préréglage », ex. Bar = 1 et Salon = 3 — une liste permet alors de choisir la zone avant de lancer l'événement."
         }
       },
       "remove_event": {
@@ -280,7 +282,8 @@
       "file_not_found": "Aucun fichier de ce nom dans le dossier de configuration",
       "invalid_file": "Le fichier n'est pas un export Kydax Sound valide",
       "invalid_channels": "Le fichier contient des canaux sans numéro, sans nom ou sans volumes",
-      "write_failed": "Impossible d'écrire le fichier — vérifiez le nom et les permissions"
+      "write_failed": "Impossible d'écrire le fichier — vérifiez le nom et les permissions",
+      "invalid_event_presets": "Préréglage invalide : un nombre, ou un « Zone = préréglage » par ligne (1-150)"
     },
     "abort": {
       "cannot_connect": "Impossible de joindre l'appareil pour lancer le test",
@@ -359,6 +362,9 @@
       },
       "event_option": {
         "name": "Langue {event}"
+      },
+      "event_preset": {
+        "name": "Zone {event}"
       }
     },
     "sensor": {

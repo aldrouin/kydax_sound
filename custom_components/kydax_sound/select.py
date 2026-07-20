@@ -33,6 +33,11 @@ async def async_setup_entry(
         for event in entry.options.get(CONF_EVENT_BUTTONS, [])
         if event.get("options")
     )
+    entities.extend(
+        KydaxSoundEventPresetSelect(hub, event)
+        for event in entry.options.get(CONF_EVENT_BUTTONS, [])
+        if event.get("preset_options")
+    )
     async_add_entities(entities)
 
 
@@ -64,6 +69,37 @@ class KydaxSoundEventOptionSelect(KydaxSoundEntity, SelectEntity, RestoreEntity)
 
     async def async_select_option(self, option: str) -> None:
         self._hub.set_event_option(self._event_id, option)
+        self.async_write_ha_state()
+
+
+class KydaxSoundEventPresetSelect(KydaxSoundEntity, SelectEntity, RestoreEntity):
+    """Which preset an event loads — typically the zone it plays in."""
+
+    _attr_translation_key = "event_preset"
+    _attr_icon = "mdi:map-marker-radius"
+
+    def __init__(self, hub: KydaxSoundHub, event: dict) -> None:
+        super().__init__(hub)
+        self._event_id = event["id"]
+        self._attr_unique_id = f"{hub.entry.entry_id}_event_preset_{event['id']}"
+        self._attr_translation_placeholders = {"event": event["name"]}
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        last = await self.async_get_last_state()
+        if last is not None:
+            self._hub.set_event_preset(self._event_id, last.state)
+
+    @property
+    def options(self) -> list[str]:
+        return self._hub.event_preset_labels(self._event_id)
+
+    @property
+    def current_option(self) -> str | None:
+        return self._hub.selected_event_preset(self._event_id)
+
+    async def async_select_option(self, option: str) -> None:
+        self._hub.set_event_preset(self._event_id, option)
         self.async_write_ha_state()
 
 

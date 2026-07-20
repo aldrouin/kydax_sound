@@ -33,8 +33,10 @@ from .const import (
     POSITION_MAX,
     POLL_SECONDS,
     channel_db_for_level,
+    channel_fraction_for_db,
     channel_level_for_db,
     channel_max_db,
+    channel_position_for_fraction,
     channel_position_for_level,
     db_to_position,
     position_to_db,
@@ -111,6 +113,8 @@ class KydaxSoundHub:
         self.event_runs: dict[str, EventRun] = {}
         # chosen option label per event (e.g. the birthday song language)
         self.event_selection: dict[str, str] = {}
+        # chosen preset label per event (e.g. which zone it plays in)
+        self.event_preset_selection: dict[str, str] = {}
         self.pause_state: dict[str, PauseState] = {
             group_id: PauseState() for group_id in self.pause_groups
         }
@@ -326,6 +330,40 @@ class KydaxSoundHub:
             return None
         return position_to_db(position)
 
+    def channel_fraction(self, number: int) -> float | None:
+        """The channel's slider position, 0.0-1.0 of its capped range."""
+        db = self.channel_db(number)
+        channel = self.channels.get(number)
+        if db is None or channel is None:
+            return None
+        return channel_fraction_for_db(channel, db)
+
+    async def async_set_channels_fraction(
+        self, numbers: list[int], fraction: float
+    ) -> None:
+        """Move channels' sliders to a fraction of their capped range.
+
+        Smooth, unlike the percentage levels, which use each channel's
+        configured dB per level.
+        """
+        unknown = [n for n in numbers if n not in self.channels]
+        if unknown:
+            raise HomeAssistantError(f"Unknown channel(s): {unknown}")
+        paused = self.paused_channels
+        written: dict[int, int] = {}
+        try:
+            for number in numbers:
+                if number in paused:
+                    continue
+                written[number] = await self._async_write(
+                    number,
+                    channel_position_for_fraction(self.channels[number], fraction),
+                )
+        except SymetrixError as err:
+            raise HomeAssistantError(f"Volume change failed: {err}") from err
+        self._update_level_from_positions(written)
+        self._dispatch()
+
     async def async_set_channels_db(
         self, numbers: list[int], db: float
     ) -> None:
@@ -436,17 +474,56 @@ class KydaxSoundHub:
             self.event_selection[event_id] = label
             self._dispatch()
 
-    def _event_command(self, event: dict) -> str | None:
-        """The MusiSelect command to send: the selected option, or the single
-        command when the event has no options."""
+    def _selected_option(self, event: dict) -> dict | None:
         options = event.get("options")
         if not options:
-            return event.get("command")
+            return None
         label = self.selected_event_option(event["id"])
         for option in options:
             if option["label"] == label:
-                return option["command"]
-        return options[0]["command"]
+                return option
+        return options[0]
+
+    def _event_command(self, event: dict) -> str | None:
+        """The MusiSelect command to send: the selected choice's, or the
+        event's own when it has no choices."""
+        option = self._selected_option(event)
+        if option is None:
+            return event.get("command")
+        return option.get("command")
+
+    def event_preset_labels(self, event_id: str) -> list[str]:
+        event = self.event_buttons.get(event_id, {})
+        return [option["label"] for option in event.get("preset_options", [])]
+
+    def selected_event_preset(self, event_id: str) -> str | None:
+        """The chosen preset label (e.g. the zone), defaulting to the first."""
+        labels = self.event_preset_labels(event_id)
+        if not labels:
+            return None
+        chosen = self.event_preset_selection.get(event_id)
+        return chosen if chosen in labels else labels[0]
+
+    @callback
+    def set_event_preset(self, event_id: str, label: str) -> None:
+        if label in self.event_preset_labels(event_id):
+            self.event_preset_selection[event_id] = label
+            self._dispatch()
+
+    def _event_preset(self, event: dict) -> int | None:
+        """The Symetrix preset to load.
+
+        Events may offer a choice of presets - one per zone - so the same
+        event can play in a different area depending on the selection.
+        """
+        options = event.get("preset_options")
+        if options:
+            label = self.selected_event_preset(event["id"])
+            for option in options:
+                if option["label"] == label:
+                    return option["preset"]
+            return options[0]["preset"]
+        return event.get("preset")
 
     def event_finishes_at(self, event_id: str) -> datetime | None:
         run = self.event_runs.get(event_id)
@@ -462,6 +539,11 @@ class KydaxSoundHub:
         event = self.event_buttons.get(event_id)
         if event is None:
             raise HomeAssistantError(f"Unknown event button {event_id}")
+        if not self._event_preset(event) and not self._event_command(event):
+            raise HomeAssistantError(
+                f"Event '{event['name']}' has nothing to do for the selected "
+                "choice"
+            )
         if event_id in self.event_runs:
             return  # already running
         if self.event_runs:
@@ -499,7 +581,7 @@ class KydaxSoundHub:
         deployment); the duration is the only wait before the return preset.
         """
         try:
-            preset = event.get("preset")
+            preset = self._event_preset(event)
             command = self._event_command(event)
             if preset:
                 await self.symetrix.async_load_preset(preset)
@@ -509,12 +591,18 @@ class KydaxSoundHub:
                 await asyncio.sleep(event["duration"])
                 if event.get("return_preset"):
                     await self.symetrix.async_load_preset(event["return_preset"])
+            details = [
+                label
+                for label in (
+                    self.selected_event_preset(event["id"]),
+                    self.selected_event_option(event["id"]),
+                )
+                if label
+            ]
             _LOGGER.info(
                 "Event '%s'%s finished",
                 event["name"],
-                f" ({self.selected_event_option(event['id'])})"
-                if event.get("options")
-                else "",
+                f" ({', '.join(details)})" if details else "",
             )
         except (SymetrixError, MusiSelectError) as err:
             _LOGGER.warning("Event '%s' failed: %s", event["name"], err)

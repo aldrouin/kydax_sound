@@ -183,7 +183,8 @@
           "return_preset": "Return preset"
         },
         "data_description": {
-          "command": "One command, e.g. PACINI diffSpecial 1. To offer a choice (such as the song language), write one per line as \"Label = command\", e.g. French = PACINI diffSpecial 1 and English = PACINI diffSpecial 2 — a selector then lets you pick which one this event sends."
+          "command": "One command, e.g. PACINI diffSpecial 1. To offer a choice (such as the song language), write one per line as \"Label = command\", e.g. Français = PACINI diffSpecial 1 and English = PACINI diffSpecial 2 — a selector then lets you pick which one this event sends.",
+          "preset": "One preset number, e.g. 1. To choose where the music plays, write one per line as \"Zone = preset\", e.g. Bar = 1 and Salon = 3 — a selector then lets you pick the zone before running the event."
         }
       },
       "edit_event": {
@@ -203,7 +204,8 @@
           "return_preset": "Return preset"
         },
         "data_description": {
-          "command": "One command, e.g. PACINI diffSpecial 1. To offer a choice (such as the song language), write one per line as \"Label = command\", e.g. French = PACINI diffSpecial 1 and English = PACINI diffSpecial 2 — a selector then lets you pick which one this event sends."
+          "command": "One command, e.g. PACINI diffSpecial 1. To offer a choice (such as the song language), write one per line as \"Label = command\", e.g. Français = PACINI diffSpecial 1 and English = PACINI diffSpecial 2 — a selector then lets you pick which one this event sends.",
+          "preset": "One preset number, e.g. 1. To choose where the music plays, write one per line as \"Zone = preset\", e.g. Bar = 1 and Salon = 3 — a selector then lets you pick the zone before running the event."
         }
       },
       "remove_event": {
@@ -280,7 +282,8 @@
       "file_not_found": "No such file in the configuration folder",
       "invalid_file": "The file is not a valid Kydax Sound export",
       "invalid_channels": "The file contains channels without a number, a name or their volumes",
-      "write_failed": "Could not write the file - check the name and permissions"
+      "write_failed": "Could not write the file - check the name and permissions",
+      "invalid_event_presets": "Invalid preset: a number, or one \"Zone = preset\" per line (1-150)"
     },
     "abort": {
       "cannot_connect": "Could not reach the appliance to run the test",
@@ -359,6 +362,9 @@
       },
       "event_option": {
         "name": "{event} language"
+      },
+      "event_preset": {
+        "name": "{event} zone"
       }
     },
     "sensor": {

@@ -4,10 +4,11 @@
 - one per configured channel group: a single slider driving every channel
   in the group
 
-Sliders map through each channel's level table, so a slider at 70% plays
-exactly the dB configured for that channel at 70%. The slider's maximum is
-the channel's highest configured level, so a channel can never be driven
-past the volume set as its 100% - the speakers are protected.
+The slider moves smoothly from silent up to the channel's configured 100%,
+so dragging feels natural; it deliberately does not snap to the per-level
+volumes, which are what the percentage toggles use. Its top end is the
+channel's 100%, so a channel can never be driven past that - the speakers
+are protected.
 """
 
 from __future__ import annotations
@@ -58,18 +59,20 @@ class _BasePlayer(KydaxSoundEntity, MediaPlayerEntity):
     def __init__(self, hub: KydaxSoundHub) -> None:
         super().__init__(hub)
         # restored on unmute; refreshed from every non-zero reading
-        self._last_nonzero_pct = 70.0
+        self._last_nonzero = 0.7
 
     @property
     def _numbers(self) -> list[int]:
         raise NotImplementedError
 
-    def _current_pct(self) -> float | None:
-        """Average of the members' percentages; None while unknown."""
+    def _current_fraction(self) -> float | None:
+        """Average slider position of the members; None while unknown."""
         values = [
-            pct
-            for pct in (self._hub.channel_pct(n) for n in self._numbers)
-            if pct is not None
+            fraction
+            for fraction in (
+                self._hub.channel_fraction(n) for n in self._numbers
+            )
+            if fraction is not None
         ]
         if not values:
             return None
@@ -81,30 +84,30 @@ class _BasePlayer(KydaxSoundEntity, MediaPlayerEntity):
 
     @property
     def volume_level(self) -> float | None:
-        pct = self._current_pct()
-        if pct is None:
+        fraction = self._current_fraction()
+        if fraction is None:
             return None
-        if pct > 0:
-            self._last_nonzero_pct = pct
-        return min(1.0, max(0.0, pct / 100))
+        if fraction > 0:
+            self._last_nonzero = fraction
+        return fraction
 
     @property
     def is_volume_muted(self) -> bool | None:
-        pct = self._current_pct()
-        return None if pct is None else pct == 0
+        fraction = self._current_fraction()
+        return None if fraction is None else fraction == 0
 
     async def async_set_volume_level(self, volume: float) -> None:
-        await self._hub.async_set_channels_pct(self._numbers, volume * 100)
+        await self._hub.async_set_channels_fraction(self._numbers, volume)
 
     async def async_mute_volume(self, mute: bool) -> None:
         if mute:
-            pct = self._current_pct()
-            if pct:
-                self._last_nonzero_pct = pct
-            await self._hub.async_set_channels_pct(self._numbers, 0)
+            fraction = self._current_fraction()
+            if fraction:
+                self._last_nonzero = fraction
+            await self._hub.async_set_channels_fraction(self._numbers, 0.0)
         else:
-            await self._hub.async_set_channels_pct(
-                self._numbers, self._last_nonzero_pct
+            await self._hub.async_set_channels_fraction(
+                self._numbers, self._last_nonzero
             )
 
 

@@ -136,6 +136,29 @@ def channel_level_for_db(channel: dict, db: float) -> float | None:
     return float(points[-1][0])
 
 
+def channel_fraction_for_db(channel: dict, db: float) -> float:
+    """Where a dB sits on the channel's slider, 0.0 to 1.0.
+
+    The slider is a smooth range from the fader minimum up to the channel's
+    configured 100% - it deliberately does not follow the per-level table,
+    which would make dragging feel like it jumps between steps.
+    """
+    ceiling = channel_max_db(channel)
+    if ceiling <= FADER_MIN_DB:
+        return 0.0
+    fraction = (db - FADER_MIN_DB) / (ceiling - FADER_MIN_DB)
+    return max(0.0, min(1.0, fraction))
+
+
+def channel_position_for_fraction(channel: dict, fraction: float) -> int:
+    """The controller position for a slider at a fraction of its range."""
+    fraction = max(0.0, min(1.0, fraction))
+    ceiling = channel_max_db(channel)
+    if ceiling <= FADER_MIN_DB:
+        return 0
+    return db_to_position(FADER_MIN_DB + fraction * (ceiling - FADER_MIN_DB))
+
+
 def signal_update(entry_id: str) -> str:
     """Dispatcher signal for entity state refreshes."""
     return f"{DOMAIN}_{entry_id}_update"

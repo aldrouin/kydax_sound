@@ -241,24 +241,29 @@ class InvalidCommands(ValueError):
     """The MusiSelect command field could not be parsed."""
 
 
-def _parse_commands(text: str) -> tuple[str | None, list[dict[str, str]] | None]:
+def _parse_commands(text: str) -> tuple[str | None, list[dict[str, Any]] | None]:
     """Parse the MusiSelect command field.
 
-    One line without "=" is a single command. Lines written as
-    "Label = command" become a choice the user picks before running the
-    event (e.g. the song language). Returns (command, choices) with at most
-    one set; (None, None) when empty.
+    Accepted forms, one per line:
+      PACINI diffSpecial 1     a single command for the event
+      Label = command          a choice offered through a selector, e.g.
+                               the song language
+
+    Returns (command, choices) with at most one set; (None, None) when the
+    field is empty.
     """
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     if not lines:
         return None, None
     if any("=" in line for line in lines):
-        choices: list[dict[str, str]] = []
+        choices: list[dict[str, Any]] = []
         for line in lines:
             label, sep, command = line.partition("=")
             if not sep or not label.strip() or not command.strip():
                 raise InvalidCommands(line)
-            choices.append({"label": label.strip(), "command": command.strip()})
+            choices.append(
+                {"label": label.strip(), "command": command.strip()}
+            )
         return None, choices
     if len(lines) > 1:
         # several commands with no labels: we would not know how to offer them
@@ -270,9 +275,57 @@ def _format_commands(event: dict[str, Any]) -> str:
     """The command field's text for an existing event."""
     if event.get("options"):
         return "\n".join(
-            f"{o['label']} = {o['command']}" for o in event["options"]
+            f"{o['label']} = {o.get('command', '')}" for o in event["options"]
         )
     return event.get("command", "")
+
+
+class InvalidPresets(ValueError):
+    """The preset field could not be parsed."""
+
+
+def _parse_presets(text: str) -> tuple[int | None, list[dict[str, Any]] | None]:
+    """Parse the Symetrix preset field.
+
+    Accepted forms, one per line:
+      4              one preset for the event
+      Zone = 4       a choice offered through a selector, e.g. which area
+                     the music plays in
+
+    Returns (preset, choices) with at most one set; (None, None) when empty.
+    """
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    if not lines:
+        return None, None
+
+    def _number(value: str, line: str) -> int:
+        if not value.isdigit() or not 1 <= int(value) <= 150:
+            raise InvalidPresets(line)
+        return int(value)
+
+    if any("=" in line for line in lines):
+        choices: list[dict[str, Any]] = []
+        for line in lines:
+            label, sep, preset = line.partition("=")
+            if not sep or not label.strip():
+                raise InvalidPresets(line)
+            choices.append(
+                {"label": label.strip(), "preset": _number(preset.strip(), line)}
+            )
+        return None, choices
+    if len(lines) > 1:
+        raise InvalidPresets(lines[1])
+    return _number(lines[0], lines[0]), None
+
+
+def _format_presets(event: dict[str, Any]) -> str:
+    """The preset field's text for an existing event."""
+    if event.get("preset_options"):
+        return "\n".join(
+            f"{o['label']} = {o['preset']}" for o in event["preset_options"]
+        )
+    preset = event.get("preset")
+    return "" if preset is None else str(preset)
 
 
 def _parse_level_list(text: str) -> list[int] | None:
@@ -1044,7 +1097,9 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         return vol.Schema(
             {
                 vol.Required("name"): TextSelector(),
-                vol.Optional("preset"): _optional_int(1, 150),
+                vol.Optional("preset"): vol.Any(
+                    None, TextSelector(TextSelectorConfig(multiline=True))
+                ),
                 vol.Optional("command"): vol.Any(
                     None, TextSelector(TextSelectorConfig(multiline=True))
                 ),
@@ -1059,8 +1114,11 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             "id": event_id,
             "name": user_input["name"],
         }
-        if user_input.get("preset"):
-            event["preset"] = user_input["preset"]
+        preset, preset_choices = _parse_presets(str(user_input.get("preset") or ""))
+        if preset_choices:
+            event["preset_options"] = preset_choices
+        elif preset:
+            event["preset"] = preset
         command, choices = _parse_commands(user_input.get("command") or "")
         if choices:
             event["options"] = choices
@@ -1082,13 +1140,25 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         return True
 
     @staticmethod
+    def _event_presets_valid(user_input: dict[str, Any]) -> bool:
+        """False only when the preset text is present but malformed."""
+        try:
+            _parse_presets(str(user_input.get("preset") or ""))
+        except InvalidPresets:
+            return False
+        return True
+
+    @staticmethod
     def _event_action_valid(user_input: dict[str, Any]) -> bool:
         """An event must do something: load a preset or send a command."""
         try:
             command, choices = _parse_commands(user_input.get("command") or "")
-        except InvalidCommands:
+            preset, preset_choices = _parse_presets(
+                str(user_input.get("preset") or "")
+            )
+        except (InvalidCommands, InvalidPresets):
             return False
-        return bool(user_input.get("preset") or command or choices)
+        return bool(preset or preset_choices or command or choices)
 
     async def async_step_event_buttons(
         self, user_input: dict[str, Any] | None = None
@@ -1103,7 +1173,9 @@ class KydaxSoundOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not self._event_options_valid(user_input):
+            if not self._event_presets_valid(user_input):
+                errors["preset"] = "invalid_event_presets"
+            elif not self._event_options_valid(user_input):
                 errors["command"] = "invalid_event_options"
             elif not self._event_action_valid(user_input):
                 errors["base"] = "event_action_required"
@@ -1152,7 +1224,9 @@ class KydaxSoundOptionsFlow(OptionsFlow):
 
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not self._event_options_valid(user_input):
+            if not self._event_presets_valid(user_input):
+                errors["preset"] = "invalid_event_presets"
+            elif not self._event_options_valid(user_input):
                 errors["command"] = "invalid_event_options"
             elif not self._event_action_valid(user_input):
                 errors["base"] = "event_action_required"
@@ -1165,6 +1239,7 @@ class KydaxSoundOptionsFlow(OptionsFlow):
 
         suggested = dict(current)
         suggested["command"] = _format_commands(current)
+        suggested["preset"] = _format_presets(current)
         return self.async_show_form(
             step_id="edit_event_form",
             data_schema=self.add_suggested_values_to_schema(
