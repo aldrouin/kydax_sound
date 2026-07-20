@@ -213,6 +213,26 @@
           "description": "Percentage of the volume range (0 = off)."
         }
       }
+    },
+    "trigger_event": {
+      "name": "Trigger an event",
+      "description": "Starts a configured event by name (e.g. the birthday song): loads the Symetrix preset, waits the delay, sends the MusiSelect command, then after the duration loads the return preset. Blocked while a pause is active.",
+      "fields": {
+        "name": {
+          "name": "Event name",
+          "description": "The name of the event button as configured in the options."
+        }
+      }
+    },
+    "cancel_event": {
+      "name": "Cancel an event",
+      "description": "Stops a running event early and loads its return preset, if one is configured.",
+      "fields": {
+        "name": {
+          "name": "Event name",
+          "description": "The name of the event button as configured in the options."
+        }
+      }
     }
   },
   "entity": {

@@ -7,6 +7,7 @@ import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 
 from .const import (
@@ -23,6 +24,10 @@ SERVICE_SET_LEVEL = "set_level"
 SET_LEVEL_SCHEMA = vol.Schema(
     {vol.Required("level"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100))}
 )
+
+SERVICE_TRIGGER_EVENT = "trigger_event"
+SERVICE_CANCEL_EVENT = "cancel_event"
+EVENT_NAME_SCHEMA = vol.Schema({vol.Required("name"): str})
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
@@ -58,14 +63,52 @@ def _async_register_services(hass: HomeAssistant) -> None:
     if hass.services.has_service(DOMAIN, SERVICE_SET_LEVEL):
         return
 
+    def _loaded_hubs() -> list[KydaxSoundHub]:
+        return [
+            entry.runtime_data
+            for entry in hass.config_entries.async_entries(DOMAIN)
+            if entry.state is ConfigEntryState.LOADED
+        ]
+
+    def _find_event(name: str) -> tuple[KydaxSoundHub, str]:
+        for hub in _loaded_hubs():
+            for event_id, event in hub.event_buttons.items():
+                if event["name"] == name:
+                    return hub, event_id
+        raise ServiceValidationError(
+            f"No event button named {name!r} is configured"
+        )
+
     async def _async_handle_set_level(call: ServiceCall) -> None:
         """Apply a volume level (any %, interpolated) on every loaded entry."""
-        for entry in hass.config_entries.async_entries(DOMAIN):
-            if entry.state is ConfigEntryState.LOADED:
-                await entry.runtime_data.async_apply_level(call.data["level"])
+        for hub in _loaded_hubs():
+            await hub.async_apply_level(call.data["level"])
+
+    async def _async_handle_trigger_event(call: ServiceCall) -> None:
+        """Start a configured event (preset -> delay -> command -> duration
+        -> return preset) by its name."""
+        hub, event_id = _find_event(call.data["name"])
+        await hub.async_trigger_event(event_id)
+
+    async def _async_handle_cancel_event(call: ServiceCall) -> None:
+        """Stop a running event early; loads its return preset, if any."""
+        hub, event_id = _find_event(call.data["name"])
+        await hub.async_cancel_event(event_id)
 
     hass.services.async_register(
         DOMAIN, SERVICE_SET_LEVEL, _async_handle_set_level, schema=SET_LEVEL_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_TRIGGER_EVENT,
+        _async_handle_trigger_event,
+        schema=EVENT_NAME_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CANCEL_EVENT,
+        _async_handle_cancel_event,
+        schema=EVENT_NAME_SCHEMA,
     )
 
 

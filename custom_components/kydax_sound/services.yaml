@@ -10,3 +10,19 @@ set_level:
           step: 1
           unit_of_measurement: "%"
           mode: box
+
+trigger_event:
+  fields:
+    name:
+      required: true
+      example: "Fête FR"
+      selector:
+        text:
+
+cancel_event:
+  fields:
+    name:
+      required: true
+      example: "Fête FR"
+      selector:
+        text:

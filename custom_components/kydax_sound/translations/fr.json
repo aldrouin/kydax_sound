@@ -213,6 +213,26 @@
           "description": "Pourcentage de la plage de volume (0 = coupé)."
         }
       }
+    },
+    "trigger_event": {
+      "name": "Déclencher un événement",
+      "description": "Démarre un événement configuré par son nom (ex. la chanson de fête) : charge le préréglage Symetrix, attend le délai, envoie la commande MusiSelect, puis après la durée charge le préréglage de retour. Bloqué lorsqu'une pause est active.",
+      "fields": {
+        "name": {
+          "name": "Nom de l'événement",
+          "description": "Le nom du bouton d'événement tel que configuré dans les options."
+        }
+      }
+    },
+    "cancel_event": {
+      "name": "Annuler un événement",
+      "description": "Arrête un événement en cours et charge son préréglage de retour, s'il est configuré.",
+      "fields": {
+        "name": {
+          "name": "Nom de l'événement",
+          "description": "Le nom du bouton d'événement tel que configuré dans les options."
+        }
+      }
     }
   },
   "entity": {
