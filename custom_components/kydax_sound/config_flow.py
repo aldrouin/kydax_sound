@@ -8,6 +8,7 @@ Everything remains editable afterwards through the options flow.
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 from uuid import uuid4
@@ -56,6 +57,57 @@ from .const import (
 from .symetrix import SymetrixClient, SymetrixError
 
 _LIST_SPLIT = re.compile(r"[\s,;]+")
+
+# import/export: everything that describes a site, without its addresses so
+# a file can be reused as a template for another restaurant
+PORTABLE_KEYS = (
+    CONF_CHANNELS,
+    CONF_LEVELS,
+    CONF_CHANNEL_GROUPS,
+    CONF_PAUSE_GROUPS,
+    CONF_EVENT_BUTTONS,
+)
+DEFAULT_CONFIG_FILE = "kydax_sound.json"
+
+
+def _export_payload(options: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "kydax_sound": {
+            key: options.get(key) for key in PORTABLE_KEYS if key in options
+        }
+    }
+
+
+def _validate_payload(payload: Any) -> str | None:
+    """Return an error key when the imported content is unusable."""
+    if not isinstance(payload, dict):
+        return "invalid_file"
+    channels = payload.get(CONF_CHANNELS)
+    if channels is not None:
+        if not isinstance(channels, list):
+            return "invalid_file"
+        for channel in channels:
+            if (
+                not isinstance(channel, dict)
+                or not isinstance(channel.get("number"), int)
+                or not str(channel.get("name") or "").strip()
+                or not isinstance(channel.get("levels"), dict)
+            ):
+                return "invalid_channels"
+    levels = payload.get(CONF_LEVELS)
+    if levels is not None and (
+        not isinstance(levels, list)
+        or not all(isinstance(level, int) and 0 <= level <= 100 for level in levels)
+    ):
+        return "invalid_levels"
+    for key in (CONF_CHANNEL_GROUPS, CONF_PAUSE_GROUPS, CONF_EVENT_BUTTONS):
+        value = payload.get(key)
+        if value is not None and (
+            not isinstance(value, list)
+            or not all(isinstance(item, dict) and item.get("id") for item in value)
+        ):
+            return "invalid_file"
+    return None
 
 
 def _port_selector():
@@ -409,8 +461,90 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                 "levels",
                 "pause_groups",
                 "event_buttons",
+                "backup",
                 "tests",
             ],
+        )
+
+    # --- import / export ------------------------------------------------------
+
+    async def async_step_backup(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return self.async_show_menu(
+            step_id="backup", menu_options=["export", "import"]
+        )
+
+    async def async_step_export(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Write channels, levels, groups and events to a file."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            path = self.hass.config.path(user_input["path"])
+            payload = _export_payload(self._options)
+
+            def _write() -> None:
+                with open(path, "w", encoding="utf-8") as handle:
+                    json.dump(payload, handle, indent=2, ensure_ascii=False)
+
+            try:
+                await self.hass.async_add_executor_job(_write)
+            except OSError:
+                errors["path"] = "write_failed"
+            else:
+                return self.async_abort(
+                    reason="exported", description_placeholders={"path": path}
+                )
+
+        return self.async_show_form(
+            step_id="export",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("path", default=DEFAULT_CONFIG_FILE): TextSelector()
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_import(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Replace channels, levels, groups and events from a file."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            path = self.hass.config.path(user_input["path"])
+
+            def _read() -> Any:
+                with open(path, encoding="utf-8") as handle:
+                    return json.load(handle)
+
+            try:
+                data = await self.hass.async_add_executor_job(_read)
+            except FileNotFoundError:
+                errors["path"] = "file_not_found"
+            except (OSError, ValueError):
+                errors["path"] = "invalid_file"
+            else:
+                payload = data.get("kydax_sound", data) if isinstance(data, dict) else data
+                problem = _validate_payload(payload)
+                if problem:
+                    errors["path"] = problem
+                else:
+                    options = self._options
+                    for key in PORTABLE_KEYS:
+                        if payload.get(key) is not None:
+                            options[key] = payload[key]
+                    return self._save(options)
+
+        return self.async_show_form(
+            step_id="import",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("path", default=DEFAULT_CONFIG_FILE): TextSelector()
+                }
+            ),
+            errors=errors,
         )
 
     # --- channel groups -------------------------------------------------------

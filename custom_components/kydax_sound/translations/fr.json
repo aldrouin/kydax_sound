@@ -54,7 +54,8 @@
           "pause_groups": "Groupes de pause",
           "event_buttons": "Boutons d'événement",
           "tests": "Tests",
-          "channel_groups": "Groupes de canaux"
+          "channel_groups": "Groupes de canaux",
+          "backup": "Importer / exporter"
         }
       },
       "tests": {
@@ -246,6 +247,27 @@
         "data": {
           "groups": "Groupes à supprimer"
         }
+      },
+      "backup": {
+        "title": "Importer / exporter",
+        "menu_options": {
+          "export": "Exporter la configuration vers un fichier",
+          "import": "Importer une configuration depuis un fichier"
+        }
+      },
+      "export": {
+        "title": "Exporter la configuration",
+        "description": "Écrit les canaux et leurs volumes, les niveaux, les groupes et les événements dans un fichier du dossier de configuration de Home Assistant. Les adresses des appareils ne sont pas incluses : le fichier peut servir de modèle pour un autre restaurant.",
+        "data": {
+          "path": "Nom du fichier"
+        }
+      },
+      "import": {
+        "title": "Importer une configuration",
+        "description": "Lit un fichier du dossier de configuration de Home Assistant et remplace les canaux, les niveaux, les groupes et les événements. Les adresses des appareils ne sont pas modifiées.",
+        "data": {
+          "path": "Nom du fichier"
+        }
       }
     },
     "error": {
@@ -254,10 +276,15 @@
       "channels_required": "Sélectionnez au moins un canal",
       "invalid_levels": "Niveaux invalides : pourcentages entiers entre 0 et 100, séparés par des virgules",
       "event_action_required": "Indiquez au moins un préréglage ou une commande MusiSelect",
-      "invalid_event_options": "Commande invalide : une seule commande, ou un « Étiquette = commande » par ligne"
+      "invalid_event_options": "Commande invalide : une seule commande, ou un « Étiquette = commande » par ligne",
+      "file_not_found": "Aucun fichier de ce nom dans le dossier de configuration",
+      "invalid_file": "Le fichier n'est pas un export Kydax Sound valide",
+      "invalid_channels": "Le fichier contient des canaux sans numéro, sans nom ou sans volumes",
+      "write_failed": "Impossible d'écrire le fichier — vérifiez le nom et les permissions"
     },
     "abort": {
-      "cannot_connect": "Impossible de joindre l'appareil pour lancer le test"
+      "cannot_connect": "Impossible de joindre l'appareil pour lancer le test",
+      "exported": "Configuration écrite dans {path}"
     }
   },
   "services": {
