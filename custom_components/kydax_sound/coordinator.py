@@ -20,15 +20,16 @@ from homeassistant.util import dt as dt_util
 from .const import (
     CONF_CHANNELS,
     CONF_EVENT_BUTTONS,
+    CONF_LEVELS,
     CONF_MUSISELECT_HOST,
     CONF_MUSISELECT_PORT,
     CONF_PAUSE_GROUPS,
-    CONF_VOLUME_SCENES,
+    DEFAULT_LEVELS,
     DEFAULT_MUSISELECT_PORT,
+    DEFAULT_PCT,
     DEFAULT_PORT,
     POLL_SECONDS,
-    db_to_position,
-    pct_to_position,
+    channel_position_for_pct,
     signal_update,
 )
 from .musiselect import MusiSelectClient, MusiSelectError
@@ -84,11 +85,9 @@ class KydaxSoundHub:
             channel["number"]: channel
             for channel in entry.options.get(CONF_CHANNELS, [])
         }
+        self.levels: list[int] = entry.options.get(CONF_LEVELS, DEFAULT_LEVELS)
         self.pause_groups: dict[str, dict] = {
             group["id"]: group for group in entry.options.get(CONF_PAUSE_GROUPS, [])
-        }
-        self.scenes: dict[str, dict] = {
-            scene["id"]: scene for scene in entry.options.get(CONF_VOLUME_SCENES, [])
         }
         self.event_buttons: dict[str, dict] = {
             event["id"]: event
@@ -98,7 +97,7 @@ class KydaxSoundHub:
         self.pause_state: dict[str, PauseState] = {
             group_id: PauseState() for group_id in self.pause_groups
         }
-        self.active_scene_id: str | None = None
+        self.active_level: int | None = None
 
     # --- lifecycle ---------------------------------------------------------
 
@@ -195,35 +194,38 @@ class KydaxSoundHub:
             state.saved.pop(channel)
         state.is_on = False
 
-    # --- volume scenes -----------------------------------------------------
+    # --- volume levels -------------------------------------------------------
 
     @callback
-    def seed_scene(self, scene_id: str) -> None:
-        """Remember the active scene after an HA restart, without writes."""
-        if scene_id in self.scenes:
-            self.active_scene_id = scene_id
+    def seed_level(self, level: int) -> None:
+        """Remember the active level after an HA restart, without writes."""
+        if level in self.levels:
+            self.active_level = level
 
-    async def async_apply_scene(self, scene_id: str) -> None:
-        """Write every channel level of a scene, skipping paused channels."""
-        scene = self.scenes.get(scene_id)
-        if scene is None:
-            raise HomeAssistantError(f"Unknown volume scene {scene_id}")
+    async def async_apply_level(self, level: int) -> None:
+        """Set every channel to its calibrated volume for a percentage level.
+
+        Each channel's dB is interpolated from its volume_50/volume_100
+        calibration (see const.channel_db_for_pct); paused channels are
+        skipped.
+        """
         paused = self.paused_channels
         skipped: list[int] = []
         try:
-            for channel_str, level_db in scene["levels"].items():
-                channel = int(channel_str)
-                if channel in paused:
-                    skipped.append(channel)
+            for number, channel in self.channels.items():
+                if number in paused:
+                    skipped.append(number)
                     continue
-                await self.symetrix.async_set(channel, db_to_position(level_db))
+                await self.symetrix.async_set(
+                    number, channel_position_for_pct(channel, level)
+                )
         except SymetrixError as err:
-            raise HomeAssistantError(f"Volume scene failed: {err}") from err
+            raise HomeAssistantError(f"Volume level failed: {err}") from err
         if skipped:
             _LOGGER.info(
-                "Scene %s skipped paused channels: %s", scene["name"], skipped
+                "Level %s%% skipped paused channels: %s", level, skipped
             )
-        self.active_scene_id = scene_id
+        self.active_level = level
         self._dispatch()
 
     # --- event buttons -------------------------------------------------------
@@ -320,7 +322,7 @@ class KydaxSoundHub:
     # --- channel defaults ----------------------------------------------------
 
     async def async_reset_volumes(self) -> None:
-        """Set every configured channel to its default percentage.
+        """Set every configured channel to its own default percentage.
 
         Paused channels are skipped, like everywhere else.
         """
@@ -330,12 +332,15 @@ class KydaxSoundHub:
                 if number in paused:
                     continue
                 await self.symetrix.async_set(
-                    number, pct_to_position(channel["default_pct"])
+                    number,
+                    channel_position_for_pct(
+                        channel, channel.get("default_pct", DEFAULT_PCT)
+                    ),
                 )
         except SymetrixError as err:
             raise HomeAssistantError(f"Volume reset failed: {err}") from err
-        # levels no longer match any scene
-        self.active_scene_id = None
+        # per-channel defaults don't correspond to a single level
+        self.active_level = None
         self._dispatch()
 
     # --- polling -----------------------------------------------------------

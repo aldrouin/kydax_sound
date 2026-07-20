@@ -15,10 +15,18 @@ DEFAULT_MUSISELECT_PORT = 2325
 POLL_SECONDS = 30
 
 # options keys
-CONF_CHANNELS = "channels"  # [{number: int, name: str, default_pct: int}]
+# channels: [{number, name, volume_50, volume_100, default_pct}]
+# volume_50/volume_100 are the channel's calibrated dB at 50% and 100%;
+# other percentages are interpolated linearly in dB.
+CONF_CHANNELS = "channels"
+CONF_LEVELS = "levels"  # [int] percentages, one button each
 CONF_PAUSE_GROUPS = "pause_groups"  # [{id, name, channels: [int]}]
-CONF_VOLUME_SCENES = "volume_scenes"  # [{id, name, levels: {"7122": -24.0}}]
-CONF_EVENT_BUTTONS = "event_buttons"  # [{id, name, preset, command, delay}]
+CONF_EVENT_BUTTONS = "event_buttons"  # [{id, name, preset, command, delay, duration, return_preset}]
+
+DEFAULT_LEVELS = [0, 50, 60, 70, 80, 90, 100]
+DEFAULT_VOLUME_50 = -33.0
+DEFAULT_VOLUME_100 = -11.0
+DEFAULT_PCT = 70
 
 # Standard Jupiter volume fader range (PROTOCOL.md). Controller position 0
 # maps to the minimum (OFF) and 65535 to the maximum.
@@ -34,15 +42,37 @@ def db_to_position(db: float) -> int:
     return max(0, min(POSITION_MAX, position))
 
 
-def pct_to_position(pct: float) -> int:
-    """Convert a percentage of the fader range to a controller position."""
-    return max(0, min(POSITION_MAX, round(pct / 100 * POSITION_MAX)))
-
-
 def position_to_db(position: int) -> float:
     """Convert a 16-bit controller position to a fader dB value."""
     span = FADER_MAX_DB - FADER_MIN_DB
     return FADER_MIN_DB + span * (position / POSITION_MAX)
+
+
+def channel_db_for_pct(
+    volume_50: float, volume_100: float, pct: float
+) -> float | None:
+    """The dB a channel should play at for a percentage level.
+
+    None means off (controller position 0). 50-100% interpolates linearly in
+    dB between the channel's two calibration points; below 50% the line
+    continues down to the fader minimum at 0%.
+    """
+    if pct <= 0:
+        return None
+    pct = min(pct, 100)
+    if pct >= 50:
+        return volume_50 + (volume_100 - volume_50) * (pct - 50) / 50
+    return FADER_MIN_DB + (volume_50 - FADER_MIN_DB) * pct / 50
+
+
+def channel_position_for_pct(channel: dict, pct: float) -> int:
+    """The controller position for a channel dict at a percentage level."""
+    db = channel_db_for_pct(
+        channel.get("volume_50", DEFAULT_VOLUME_50),
+        channel.get("volume_100", DEFAULT_VOLUME_100),
+        pct,
+    )
+    return 0 if db is None else db_to_position(db)
 
 
 def signal_update(entry_id: str) -> str:

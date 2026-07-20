@@ -10,8 +10,9 @@ from homeassistant.helpers import entity_registry as er
 from .const import (
     CONF_CHANNELS,
     CONF_EVENT_BUTTONS,
+    CONF_LEVELS,
     CONF_PAUSE_GROUPS,
-    CONF_VOLUME_SCENES,
+    DEFAULT_LEVELS,
 )
 from .coordinator import KydaxSoundHub
 
@@ -67,10 +68,6 @@ def _async_prune_stale_entities(
         for group in entry.options.get(CONF_PAUSE_GROUPS, [])
     }
     valid_ids.update(
-        f"{entry.entry_id}_scene_{scene['id']}"
-        for scene in entry.options.get(CONF_VOLUME_SCENES, [])
-    )
-    valid_ids.update(
         f"{entry.entry_id}_event_{event['id']}"
         for event in entry.options.get(CONF_EVENT_BUTTONS, [])
     )
@@ -79,16 +76,20 @@ def _async_prune_stale_entities(
         for event in entry.options.get(CONF_EVENT_BUTTONS, [])
         if event.get("duration")
     )
-    if entry.options.get(CONF_VOLUME_SCENES):
-        valid_ids.add(f"{entry.entry_id}_volume_scene")
     if entry.options.get(CONF_CHANNELS):
         valid_ids.add(f"{entry.entry_id}_reset_volumes")
+        levels = entry.options.get(CONF_LEVELS, DEFAULT_LEVELS)
+        valid_ids.update(f"{entry.entry_id}_level_{level}" for level in levels)
+        if levels:
+            valid_ids.add(f"{entry.entry_id}_volume_level")
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         if (
             "_pause_" in reg_entry.unique_id
             or "_scene_" in reg_entry.unique_id
             or "_event_" in reg_entry.unique_id
+            or "_level_" in reg_entry.unique_id
             or reg_entry.unique_id.endswith("_volume_scene")
+            or reg_entry.unique_id.endswith("_volume_level")
             or reg_entry.unique_id.endswith("_reset_volumes")
         ) and reg_entry.unique_id not in valid_ids:
             registry.async_remove(reg_entry.entity_id)

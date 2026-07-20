@@ -18,16 +18,22 @@
         }
       },
       "channels": {
-        "title": "Canaux",
-        "description": "Les canaux de volume à gérer. Un par ligne au format « contrôleur = nom = % par défaut » (ex. 7122 = Bar = 70). Modifiable plus tard dans les options.",
+        "title": "Ajouter un canal",
+        "description": "Canaux ajoutés jusqu'ici : {count}. Indiquez le numéro de contrôleur du canal, un nom, et son volume calibré à 50 % et à 100 % — les autres pourcentages sont calculés entre ces deux points. Laissez le numéro et le nom vides et décochez « Ajouter un autre » pour terminer.",
         "data": {
-          "channels": "Canaux"
+          "number": "Numéro de contrôleur",
+          "name": "Nom",
+          "volume_50": "Volume à 50 %",
+          "volume_100": "Volume à 100 %",
+          "default_pct": "Pourcentage par défaut",
+          "add_another": "Ajouter un autre canal"
         }
       }
     },
     "error": {
       "cannot_connect": "Impossible de se connecter à l'appareil",
-      "invalid_channel_defs": "Canaux invalides : un « contrôleur = nom = % par défaut » par ligne, contrôleur entre 1 et 10000 (sans doublons), pourcentage entre 0 et 100"
+      "duplicate_channel": "Ce numéro de contrôleur est déjà configuré",
+      "channel_incomplete": "Indiquez un numéro de contrôleur et un nom (ou laissez les deux vides pour terminer)"
     },
     "abort": {
       "already_configured": "Cet appareil est déjà configuré"
@@ -40,8 +46,8 @@
         "menu_options": {
           "connection": "Connexions aux appareils",
           "channels": "Canaux",
+          "levels": "Niveaux de volume",
           "pause_groups": "Groupes de pause",
-          "volume_scenes": "Scènes de volume",
           "event_buttons": "Boutons d'événement"
         }
       },
@@ -57,9 +63,51 @@
       },
       "channels": {
         "title": "Canaux",
-        "description": "Un canal par ligne au format « contrôleur = nom = % par défaut » (ex. 7122 = Bar = 70). Supprimer une ligne supprime le canal partout.",
+        "menu_options": {
+          "add_channel": "Ajouter un canal",
+          "edit_channel": "Modifier un canal",
+          "remove_channel": "Supprimer des canaux"
+        }
+      },
+      "add_channel": {
+        "title": "Ajouter un canal",
+        "description": "Le canal joue au « Volume à 50 % » pour le niveau 50 % et au « Volume à 100 % » pour le niveau 100 % ; les autres pourcentages sont calculés entre ces deux points. 0 % = toujours coupé.",
         "data": {
-          "channels": "Canaux"
+          "number": "Numéro de contrôleur",
+          "name": "Nom",
+          "volume_50": "Volume à 50 %",
+          "volume_100": "Volume à 100 %",
+          "default_pct": "Pourcentage par défaut"
+        }
+      },
+      "edit_channel": {
+        "title": "Modifier un canal",
+        "data": {
+          "channel": "Canal"
+        }
+      },
+      "edit_channel_form": {
+        "title": "Modifier un canal",
+        "description": "Le canal joue au « Volume à 50 % » pour le niveau 50 % et au « Volume à 100 % » pour le niveau 100 % ; les autres pourcentages sont calculés entre ces deux points. 0 % = toujours coupé.",
+        "data": {
+          "number": "Numéro de contrôleur",
+          "name": "Nom",
+          "volume_50": "Volume à 50 %",
+          "volume_100": "Volume à 100 %",
+          "default_pct": "Pourcentage par défaut"
+        }
+      },
+      "remove_channel": {
+        "title": "Supprimer des canaux",
+        "data": {
+          "channels": "Canaux à supprimer"
+        }
+      },
+      "levels": {
+        "title": "Niveaux de volume",
+        "description": "Les niveaux de pourcentage offerts, séparés par des virgules (ex. 0, 50, 60, 70, 80, 90, 100). Chaque niveau devient un bouton.",
+        "data": {
+          "levels": "Niveaux"
         }
       },
       "pause_groups": {
@@ -94,46 +142,6 @@
         "title": "Supprimer des groupes de pause",
         "data": {
           "groups": "Groupes à supprimer"
-        }
-      },
-      "volume_scenes": {
-        "title": "Scènes de volume",
-        "menu_options": {
-          "add_scene": "Ajouter une scène de volume",
-          "edit_scene": "Modifier une scène de volume",
-          "remove_scene": "Supprimer des scènes de volume"
-        }
-      },
-      "add_scene": {
-        "title": "Ajouter une scène de volume",
-        "data": {
-          "name": "Nom",
-          "levels": "Niveaux"
-        },
-        "data_description": {
-          "levels": "Un canal par ligne au format « canal = dB » (ex. 7122 = -24). Plage de -72 à +12 dB; -72 = coupé."
-        }
-      },
-      "edit_scene": {
-        "title": "Modifier une scène de volume",
-        "data": {
-          "scene": "Scène"
-        }
-      },
-      "edit_scene_form": {
-        "title": "Modifier une scène de volume",
-        "data": {
-          "name": "Nom",
-          "levels": "Niveaux"
-        },
-        "data_description": {
-          "levels": "Un canal par ligne au format « canal = dB » (ex. 7122 = -24). Plage de -72 à +12 dB; -72 = coupé."
-        }
-      },
-      "remove_scene": {
-        "title": "Supprimer des scènes de volume",
-        "data": {
-          "scenes": "Scènes à supprimer"
         }
       },
       "event_buttons": {
@@ -189,11 +197,10 @@
     },
     "error": {
       "cannot_connect": "Impossible de se connecter à l'appareil",
-      "event_action_required": "Indiquez au moins un préréglage ou une commande MusiSelect",
-      "invalid_channel_defs": "Canaux invalides : un « contrôleur = nom = % par défaut » par ligne, contrôleur entre 1 et 10000 (sans doublons), pourcentage entre 0 et 100",
+      "duplicate_channel": "Ce numéro de contrôleur est déjà configuré",
       "channels_required": "Sélectionnez au moins un canal",
-      "invalid_levels": "Niveaux invalides : un « canal = dB » par ligne, dB entre -72 et +12",
-      "name_exists": "Une scène portant ce nom existe déjà"
+      "invalid_levels": "Niveaux invalides : pourcentages entiers entre 0 et 100, séparés par des virgules",
+      "event_action_required": "Indiquez au moins un préréglage ou une commande MusiSelect"
     }
   },
   "entity": {
@@ -203,11 +210,14 @@
       },
       "reset_volumes": {
         "name": "Réinitialiser les volumes par défaut"
+      },
+      "volume_level": {
+        "name": "Volume {level} %"
       }
     },
     "select": {
-      "volume_scene": {
-        "name": "Scène de volume"
+      "volume_level": {
+        "name": "Niveau de volume"
       }
     },
     "sensor": {

@@ -1,6 +1,6 @@
 """Button platform for Kydax Sound.
 
-- one button per volume scene (like the old switchson_* buttons)
+- one button per volume level percentage (like the old switchson_* buttons)
 - reset-to-default-volumes button
 - diagnostic flash-LEDs button
 
@@ -15,7 +15,7 @@ from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import KydaxSoundConfigEntry
-from .const import CONF_CHANNELS, CONF_VOLUME_SCENES
+from .const import CONF_CHANNELS
 from .coordinator import KydaxSoundHub
 from .entity import KydaxSoundEntity
 
@@ -30,10 +30,7 @@ async def async_setup_entry(
     entities: list[ButtonEntity] = [FlashUnitButton(hub)]
     if entry.options.get(CONF_CHANNELS):
         entities.append(ResetVolumesButton(hub))
-    entities.extend(
-        VolumeSceneButton(hub, scene)
-        for scene in entry.options.get(CONF_VOLUME_SCENES, [])
-    )
+        entities.extend(VolumeLevelButton(hub, level) for level in hub.levels)
     async_add_entities(entities)
 
 
@@ -65,16 +62,20 @@ class ResetVolumesButton(KydaxSoundEntity, ButtonEntity):
         await self._hub.async_reset_volumes()
 
 
-class VolumeSceneButton(KydaxSoundEntity, ButtonEntity):
-    """Applies one volume scene (paused channels are skipped)."""
+class VolumeLevelButton(KydaxSoundEntity, ButtonEntity):
+    """Sets every channel to its calibrated volume for this percentage.
 
+    Paused channels are skipped.
+    """
+
+    _attr_translation_key = "volume_level"
     _attr_icon = "mdi:volume-medium"
 
-    def __init__(self, hub: KydaxSoundHub, scene: dict) -> None:
+    def __init__(self, hub: KydaxSoundHub, level: int) -> None:
         super().__init__(hub)
-        self._scene = scene
-        self._attr_name = scene["name"]
-        self._attr_unique_id = f"{hub.entry.entry_id}_scene_{scene['id']}"
+        self._level = level
+        self._attr_unique_id = f"{hub.entry.entry_id}_level_{level}"
+        self._attr_translation_placeholders = {"level": str(level)}
 
     async def async_press(self) -> None:
-        await self._hub.async_apply_scene(self._scene["id"])
+        await self._hub.async_apply_level(self._level)

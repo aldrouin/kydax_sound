@@ -18,16 +18,22 @@
         }
       },
       "channels": {
-        "title": "Channels",
-        "description": "The volume channels to manage. One per line as \"controller = name = default %\" (e.g. 7122 = Bar = 70). This can be changed later in the options.",
+        "title": "Add a channel",
+        "description": "Channels added so far: {count}. Give the channel's controller number, a name, and its calibrated volume at 50% and at 100% — other percentages are computed between these two points. Leave number and name empty and uncheck \"Add another\" to finish.",
         "data": {
-          "channels": "Channels"
+          "number": "Controller number",
+          "name": "Name",
+          "volume_50": "Volume at 50%",
+          "volume_100": "Volume at 100%",
+          "default_pct": "Default percentage",
+          "add_another": "Add another channel"
         }
       }
     },
     "error": {
       "cannot_connect": "Could not connect to the appliance",
-      "invalid_channel_defs": "Invalid channels: one \"controller = name = default %\" per line, controller between 1 and 10000 (no duplicates), percentage between 0 and 100"
+      "duplicate_channel": "This controller number is already configured",
+      "channel_incomplete": "Give both a controller number and a name (or leave both empty to finish)"
     },
     "abort": {
       "already_configured": "This appliance is already configured"
@@ -40,8 +46,8 @@
         "menu_options": {
           "connection": "Appliance connections",
           "channels": "Channels",
+          "levels": "Volume levels",
           "pause_groups": "Pause groups",
-          "volume_scenes": "Volume scenes",
           "event_buttons": "Event buttons"
         }
       },
@@ -57,9 +63,51 @@
       },
       "channels": {
         "title": "Channels",
-        "description": "One channel per line as \"controller = name = default %\" (e.g. 7122 = Bar = 70). Removing a line removes the channel everywhere.",
+        "menu_options": {
+          "add_channel": "Add a channel",
+          "edit_channel": "Edit a channel",
+          "remove_channel": "Remove channels"
+        }
+      },
+      "add_channel": {
+        "title": "Add a channel",
+        "description": "The channel plays at \"Volume at 50%\" for the 50% level and at \"Volume at 100%\" for the 100% level; other percentages are computed between these two points. 0% is always off.",
         "data": {
-          "channels": "Channels"
+          "number": "Controller number",
+          "name": "Name",
+          "volume_50": "Volume at 50%",
+          "volume_100": "Volume at 100%",
+          "default_pct": "Default percentage"
+        }
+      },
+      "edit_channel": {
+        "title": "Edit a channel",
+        "data": {
+          "channel": "Channel"
+        }
+      },
+      "edit_channel_form": {
+        "title": "Edit a channel",
+        "description": "The channel plays at \"Volume at 50%\" for the 50% level and at \"Volume at 100%\" for the 100% level; other percentages are computed between these two points. 0% is always off.",
+        "data": {
+          "number": "Controller number",
+          "name": "Name",
+          "volume_50": "Volume at 50%",
+          "volume_100": "Volume at 100%",
+          "default_pct": "Default percentage"
+        }
+      },
+      "remove_channel": {
+        "title": "Remove channels",
+        "data": {
+          "channels": "Channels to remove"
+        }
+      },
+      "levels": {
+        "title": "Volume levels",
+        "description": "The percentage levels to offer, separated by commas (e.g. 0, 50, 60, 70, 80, 90, 100). Each level becomes a button.",
+        "data": {
+          "levels": "Levels"
         }
       },
       "pause_groups": {
@@ -94,46 +142,6 @@
         "title": "Remove pause groups",
         "data": {
           "groups": "Groups to remove"
-        }
-      },
-      "volume_scenes": {
-        "title": "Volume scenes",
-        "menu_options": {
-          "add_scene": "Add a volume scene",
-          "edit_scene": "Edit a volume scene",
-          "remove_scene": "Remove volume scenes"
-        }
-      },
-      "add_scene": {
-        "title": "Add a volume scene",
-        "data": {
-          "name": "Name",
-          "levels": "Levels"
-        },
-        "data_description": {
-          "levels": "One channel per line as \"channel = dB\" (e.g. 7122 = -24). Range -72 to +12 dB; -72 is off."
-        }
-      },
-      "edit_scene": {
-        "title": "Edit a volume scene",
-        "data": {
-          "scene": "Scene"
-        }
-      },
-      "edit_scene_form": {
-        "title": "Edit a volume scene",
-        "data": {
-          "name": "Name",
-          "levels": "Levels"
-        },
-        "data_description": {
-          "levels": "One channel per line as \"channel = dB\" (e.g. 7122 = -24). Range -72 to +12 dB; -72 is off."
-        }
-      },
-      "remove_scene": {
-        "title": "Remove volume scenes",
-        "data": {
-          "scenes": "Scenes to remove"
         }
       },
       "event_buttons": {
@@ -189,11 +197,10 @@
     },
     "error": {
       "cannot_connect": "Could not connect to the appliance",
-      "event_action_required": "Set at least a preset or a MusiSelect command",
-      "invalid_channel_defs": "Invalid channels: one \"controller = name = default %\" per line, controller between 1 and 10000 (no duplicates), percentage between 0 and 100",
+      "duplicate_channel": "This controller number is already configured",
       "channels_required": "Select at least one channel",
-      "invalid_levels": "Invalid levels: one \"channel = dB\" per line, dB between -72 and +12",
-      "name_exists": "A scene with this name already exists"
+      "invalid_levels": "Invalid levels: whole percentages between 0 and 100, separated by commas",
+      "event_action_required": "Set at least a preset or a MusiSelect command"
     }
   },
   "entity": {
@@ -203,11 +210,14 @@
       },
       "reset_volumes": {
         "name": "Reset volumes to defaults"
+      },
+      "volume_level": {
+        "name": "Volume {level}%"
       }
     },
     "select": {
-      "volume_scene": {
-        "name": "Volume scene"
+      "volume_level": {
+        "name": "Volume level"
       }
     },
     "sensor": {
