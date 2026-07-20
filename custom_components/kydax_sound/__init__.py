@@ -146,6 +146,11 @@ def _async_prune_stale_entities(
         for event in entry.options.get(CONF_EVENT_BUTTONS, [])
         if event.get("duration")
     )
+    valid_ids.update(
+        f"{entry.entry_id}_event_option_{event['id']}"
+        for event in entry.options.get(CONF_EVENT_BUTTONS, [])
+        if event.get("options")
+    )
     if entry.options.get(CONF_CHANNELS):
         levels = entry.options.get(CONF_LEVELS, DEFAULT_LEVELS)
         valid_ids.update(f"{entry.entry_id}_level_{level}" for level in levels)

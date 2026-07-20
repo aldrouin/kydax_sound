@@ -103,6 +103,8 @@ class KydaxSoundHub:
             for event in entry.options.get(CONF_EVENT_BUTTONS, [])
         }
         self.event_runs: dict[str, EventRun] = {}
+        # chosen option label per event (e.g. the birthday song language)
+        self.event_selection: dict[str, str] = {}
         self.pause_state: dict[str, PauseState] = {
             group_id: PauseState() for group_id in self.pause_groups
         }
@@ -312,6 +314,36 @@ class KydaxSoundHub:
     def any_event_running(self) -> bool:
         return bool(self.event_runs)
 
+    def event_option_labels(self, event_id: str) -> list[str]:
+        event = self.event_buttons.get(event_id, {})
+        return [option["label"] for option in event.get("options", [])]
+
+    def selected_event_option(self, event_id: str) -> str | None:
+        """The chosen option label, defaulting to the first one."""
+        labels = self.event_option_labels(event_id)
+        if not labels:
+            return None
+        chosen = self.event_selection.get(event_id)
+        return chosen if chosen in labels else labels[0]
+
+    @callback
+    def set_event_option(self, event_id: str, label: str) -> None:
+        if label in self.event_option_labels(event_id):
+            self.event_selection[event_id] = label
+            self._dispatch()
+
+    def _event_command(self, event: dict) -> str | None:
+        """The MusiSelect command to send: the selected option, or the single
+        command when the event has no options."""
+        options = event.get("options")
+        if not options:
+            return event.get("command")
+        label = self.selected_event_option(event["id"])
+        for option in options:
+            if option["label"] == label:
+                return option["command"]
+        return options[0]["command"]
+
     def event_finishes_at(self, event_id: str) -> datetime | None:
         run = self.event_runs.get(event_id)
         return run.finishes_at if run else None
@@ -341,7 +373,7 @@ class KydaxSoundHub:
                 "A pause is active; event not triggered "
                 "(une pause est active; événement non déclenché)"
             )
-        if event.get("command") and self.musiselect is None:
+        if self._event_command(event) and self.musiselect is None:
             raise HomeAssistantError(
                 "No MusiSelect device configured "
                 "(aucun appareil MusiSelect configuré)"
@@ -364,7 +396,7 @@ class KydaxSoundHub:
         """
         try:
             preset = event.get("preset")
-            command = event.get("command")
+            command = self._event_command(event)
             if preset:
                 await self.symetrix.async_load_preset(preset)
             if command:
@@ -373,7 +405,13 @@ class KydaxSoundHub:
                 await asyncio.sleep(event["duration"])
                 if event.get("return_preset"):
                     await self.symetrix.async_load_preset(event["return_preset"])
-            _LOGGER.info("Event '%s' finished", event["name"])
+            _LOGGER.info(
+                "Event '%s'%s finished",
+                event["name"],
+                f" ({self.selected_event_option(event['id'])})"
+                if event.get("options")
+                else "",
+            )
         except (SymetrixError, MusiSelectError) as err:
             _LOGGER.warning("Event '%s' failed: %s", event["name"], err)
         finally:

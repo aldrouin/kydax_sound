@@ -166,10 +166,12 @@
           "preset": "Préréglage Symetrix",
           "command": "Commande MusiSelect",
           "duration": "Durée (longueur de la chanson)",
-          "return_preset": "Préréglage de retour"
+          "return_preset": "Préréglage de retour",
+          "options": "Choix de commandes (ex. langues)"
         },
         "data_description": {
-          "command": "Par exemple : PACINI diffSpecial 1"
+          "command": "Par exemple : PACINI diffSpecial 1",
+          "options": "Un par ligne au format « Étiquette = commande », ex. Français = PACINI diffSpecial 1. Si renseigné, une entité de sélection permet de choisir laquelle l'événement envoie, et la commande unique ci-dessus est ignorée."
         }
       },
       "edit_event": {
@@ -186,10 +188,12 @@
           "preset": "Préréglage Symetrix",
           "command": "Commande MusiSelect",
           "duration": "Durée (longueur de la chanson)",
-          "return_preset": "Préréglage de retour"
+          "return_preset": "Préréglage de retour",
+          "options": "Choix de commandes (ex. langues)"
         },
         "data_description": {
-          "command": "Par exemple : PACINI diffSpecial 1"
+          "command": "Par exemple : PACINI diffSpecial 1",
+          "options": "Un par ligne au format « Étiquette = commande », ex. Français = PACINI diffSpecial 1. Si renseigné, une entité de sélection permet de choisir laquelle l'événement envoie, et la commande unique ci-dessus est ignorée."
         }
       },
       "remove_event": {
@@ -204,7 +208,8 @@
       "duplicate_channel": "Ce numéro de contrôleur est déjà configuré",
       "channels_required": "Sélectionnez au moins un canal",
       "invalid_levels": "Niveaux invalides : pourcentages entiers entre 0 et 100, séparés par des virgules",
-      "event_action_required": "Indiquez au moins un préréglage ou une commande MusiSelect"
+      "event_action_required": "Indiquez au moins un préréglage ou une commande MusiSelect",
+      "invalid_event_options": "Choix invalides : un « Étiquette = commande » par ligne"
     },
     "abort": {
       "cannot_connect": "Impossible de joindre l'appareil pour lancer le test"
@@ -251,6 +256,9 @@
     "select": {
       "volume_level": {
         "name": "Niveau de volume"
+      },
+      "event_option": {
+        "name": "Choix {event}"
       }
     },
     "sensor": {

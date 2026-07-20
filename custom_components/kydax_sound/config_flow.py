@@ -147,6 +147,28 @@ def _channel_from_input(user_input: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _parse_event_options(text: str) -> list[dict[str, str]] | None:
+    """Parse "Label = command" lines into event options (e.g. languages).
+
+    Returns None when nothing usable is given; raises nothing - malformed
+    lines make the whole input invalid (signalled by an empty list).
+    """
+    options: list[dict[str, str]] = []
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        label, sep, command = line.partition("=")
+        if not sep or not label.strip() or not command.strip():
+            return []  # invalid
+        options.append({"label": label.strip(), "command": command.strip()})
+    return options or None
+
+
+def _format_event_options(options: list[dict[str, str]]) -> str:
+    return "\n".join(f"{o['label']} = {o['command']}" for o in options)
+
+
 def _parse_level_list(text: str) -> list[int] | None:
     """Parse "0, 50, 60, 70" into a sorted unique list; None if invalid."""
     values: list[int] = []
@@ -704,6 +726,9 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                     vol.Coerce(int),
                 ),
                 vol.Optional("command"): TextSelector(),
+                vol.Optional("options"): TextSelector(
+                    TextSelectorConfig(multiline=True)
+                ),
                 vol.Optional("duration"): vol.All(
                     NumberSelector(
                         NumberSelectorConfig(
@@ -735,9 +760,14 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         }
         if user_input.get("preset"):
             event["preset"] = user_input["preset"]
-        command = (user_input.get("command") or "").strip()
-        if command:
-            event["command"] = command
+        options = _parse_event_options(user_input.get("options") or "")
+        if options:
+            # a choice of commands (e.g. languages) replaces the single one
+            event["options"] = options
+        else:
+            command = (user_input.get("command") or "").strip()
+            if command:
+                event["command"] = command
         if user_input.get("duration"):
             event["duration"] = user_input["duration"]
         if user_input.get("return_preset"):
@@ -745,9 +775,17 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         return event
 
     @staticmethod
+    def _event_options_valid(user_input: dict[str, Any]) -> bool:
+        """False only when the options text is present but malformed."""
+        text = user_input.get("options") or ""
+        return bool(text.strip() == "" or _parse_event_options(text))
+
+    @staticmethod
     def _event_action_valid(user_input: dict[str, Any]) -> bool:
         return bool(
-            user_input.get("preset") or (user_input.get("command") or "").strip()
+            user_input.get("preset")
+            or (user_input.get("command") or "").strip()
+            or _parse_event_options(user_input.get("options") or "")
         )
 
     async def async_step_event_buttons(
@@ -763,7 +801,9 @@ class KydaxSoundOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not self._event_action_valid(user_input):
+            if not self._event_options_valid(user_input):
+                errors["options"] = "invalid_event_options"
+            elif not self._event_action_valid(user_input):
                 errors["base"] = "event_action_required"
             else:
                 options = self._options
@@ -810,7 +850,9 @@ class KydaxSoundOptionsFlow(OptionsFlow):
 
         errors: dict[str, str] = {}
         if user_input is not None:
-            if not self._event_action_valid(user_input):
+            if not self._event_options_valid(user_input):
+                errors["options"] = "invalid_event_options"
+            elif not self._event_action_valid(user_input):
                 errors["base"] = "event_action_required"
             else:
                 updated = self._event_from_input(current["id"], user_input)
@@ -819,10 +861,13 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                 ]
                 return self._save(options)
 
+        suggested = dict(current)
+        if current.get("options"):
+            suggested["options"] = _format_event_options(current["options"])
         return self.async_show_form(
             step_id="edit_event_form",
             data_schema=self.add_suggested_values_to_schema(
-                self._event_schema(), current
+                self._event_schema(), suggested
             ),
             errors=errors,
         )

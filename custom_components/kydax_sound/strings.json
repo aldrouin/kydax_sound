@@ -166,10 +166,12 @@
           "preset": "Symetrix preset",
           "command": "MusiSelect command",
           "duration": "Duration (song length)",
-          "return_preset": "Return preset"
+          "return_preset": "Return preset",
+          "options": "Command choices (e.g. languages)"
         },
         "data_description": {
-          "command": "For example: PACINI diffSpecial 1"
+          "command": "For example: PACINI diffSpecial 1",
+          "options": "One per line as \"Label = command\", e.g. French = PACINI diffSpecial 1. When set, a selector entity lets you pick which one the event sends, and the single command above is ignored."
         }
       },
       "edit_event": {
@@ -186,10 +188,12 @@
           "preset": "Symetrix preset",
           "command": "MusiSelect command",
           "duration": "Duration (song length)",
-          "return_preset": "Return preset"
+          "return_preset": "Return preset",
+          "options": "Command choices (e.g. languages)"
         },
         "data_description": {
-          "command": "For example: PACINI diffSpecial 1"
+          "command": "For example: PACINI diffSpecial 1",
+          "options": "One per line as \"Label = command\", e.g. French = PACINI diffSpecial 1. When set, a selector entity lets you pick which one the event sends, and the single command above is ignored."
         }
       },
       "remove_event": {
@@ -204,7 +208,8 @@
       "duplicate_channel": "This controller number is already configured",
       "channels_required": "Select at least one channel",
       "invalid_levels": "Invalid levels: whole percentages between 0 and 100, separated by commas",
-      "event_action_required": "Set at least a preset or a MusiSelect command"
+      "event_action_required": "Set at least a preset or a MusiSelect command",
+      "invalid_event_options": "Invalid choices: one \"Label = command\" per line"
     },
     "abort": {
       "cannot_connect": "Could not reach the appliance to run the test"
@@ -251,6 +256,9 @@
     "select": {
       "volume_level": {
         "name": "Volume level"
+      },
+      "event_option": {
+        "name": "{event} choice"
       }
     },
     "sensor": {
