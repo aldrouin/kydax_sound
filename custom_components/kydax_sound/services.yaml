@@ -29,6 +29,24 @@ set_channel_level:
           unit_of_measurement: "%"
           mode: box
 
+set_channel_db:
+  fields:
+    channels:
+      required: true
+      example: "[7122, 7128]"
+      selector:
+        object:
+    db:
+      required: true
+      example: -30
+      selector:
+        number:
+          min: -72
+          max: 12
+          step: 0.1
+          unit_of_measurement: dB
+          mode: box
+
 trigger_event:
   fields:
     name:

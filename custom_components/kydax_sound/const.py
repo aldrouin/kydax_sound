@@ -15,18 +15,17 @@ DEFAULT_MUSISELECT_PORT = 2325
 POLL_SECONDS = 30
 
 # options keys
-# channels: [{number, name, volume_50, volume_100}]
-# volume_50/volume_100 are the channel's calibrated dB at 50% and 100%;
-# other percentages are interpolated linearly in dB.
+# channels: [{number, name, levels: {"50": -30.0, "60": -28.0, ...}}]
+# Every percentage level has its own dB per channel: the levels are what
+# guests hear, not a formula, so nothing is inferred between them.
 CONF_CHANNELS = "channels"
-CONF_LEVELS = "levels"  # [int] percentages, one button each
+CONF_LEVELS = "levels"  # [int] percentages offered, one toggle each
 CONF_PAUSE_GROUPS = "pause_groups"  # [{id, name, channels: [int]}]
 CONF_CHANNEL_GROUPS = "channel_groups"  # [{id, name, channels: [int]}]
-CONF_EVENT_BUTTONS = "event_buttons"  # [{id, name, preset, command, delay, duration, return_preset}]
+CONF_EVENT_BUTTONS = "event_buttons"  # [{id, name, preset, command, ...}]
 
 DEFAULT_LEVELS = [0, 50, 60, 70, 80, 90, 100]
-DEFAULT_VOLUME_50 = -33.0
-DEFAULT_VOLUME_100 = -11.0
+DEFAULT_LEVEL_DB = -30.0
 
 # Standard Jupiter volume fader range (PROTOCOL.md). Controller position 0
 # maps to the minimum (OFF) and 65535 to the maximum.
@@ -48,51 +47,87 @@ def position_to_db(position: int) -> float:
     return FADER_MIN_DB + span * (position / POSITION_MAX)
 
 
-def channel_db_for_pct(
-    volume_50: float, volume_100: float, pct: float
-) -> float | None:
-    """The dB a channel should play at for a percentage level.
+def channel_level_table(channel: dict) -> dict[int, float]:
+    """The channel's {level percentage: dB} table, sanitised."""
+    table: dict[int, float] = {}
+    for level, db in (channel.get("levels") or {}).items():
+        try:
+            table[int(level)] = float(db)
+        except (TypeError, ValueError):
+            continue
+    return {level: db for level, db in table.items() if level > 0}
 
-    None means off (controller position 0). 50-100% interpolates linearly in
-    dB between the channel's two calibration points; below 50% the line
-    continues down to the fader minimum at 0%.
+
+def channel_max_db(channel: dict) -> float:
+    """The loudest dB this channel may ever play: its highest defined level.
+
+    Used to cap the volume slider so a channel cannot be driven past the
+    level configured as its maximum.
     """
-    if pct <= 0:
-        return None
-    pct = min(pct, 100)
-    if pct >= 50:
-        return volume_50 + (volume_100 - volume_50) * (pct - 50) / 50
-    return FADER_MIN_DB + (volume_50 - FADER_MIN_DB) * pct / 50
+    table = channel_level_table(channel)
+    return max(table.values()) if table else FADER_MIN_DB
 
 
-def channel_pct_for_db(
-    volume_50: float, volume_100: float, db: float
-) -> float | None:
-    """Inverse of channel_db_for_pct: the percentage a channel's current dB
-    implies, given its calibration.
+def channel_db_for_level(channel: dict, level: float) -> float | None:
+    """The dB this channel plays at a percentage level.
 
-    None when the channel carries no information (flat calibration, where
-    every level sounds the same). Clamped to 0-100.
+    Configured levels are used exactly as given. A percentage that is not
+    configured (only reachable through a service call or a slider drag)
+    falls between its neighbours; above the highest level the value is
+    capped there. None means off.
     """
-    if volume_100 == volume_50:
+    if level <= 0:
         return None
-    if db >= volume_50:
-        pct = 50 + 50 * (db - volume_50) / (volume_100 - volume_50)
-    elif volume_50 == FADER_MIN_DB:
-        pct = 0.0
-    else:
-        pct = 50 * (db - FADER_MIN_DB) / (volume_50 - FADER_MIN_DB)
-    return max(0.0, min(100.0, pct))
+    table = channel_level_table(channel)
+    if not table:
+        return None
+    if level in table:
+        return table[level]
+    points = sorted(table.items())
+    if level >= points[-1][0]:
+        return points[-1][1]  # never louder than the configured maximum
+    if level <= points[0][0]:
+        low_level, low_db = points[0]
+        return FADER_MIN_DB + (low_db - FADER_MIN_DB) * (level / low_level)
+    for (l1, d1), (l2, d2) in zip(points, points[1:]):
+        if l1 <= level <= l2:
+            return d1 + (d2 - d1) * (level - l1) / (l2 - l1)
+    return points[-1][1]
 
 
-def channel_position_for_pct(channel: dict, pct: float) -> int:
-    """The controller position for a channel dict at a percentage level."""
-    db = channel_db_for_pct(
-        channel.get("volume_50", DEFAULT_VOLUME_50),
-        channel.get("volume_100", DEFAULT_VOLUME_100),
-        pct,
-    )
+def channel_position_for_level(channel: dict, level: float) -> int:
+    """The controller position for a channel at a percentage level."""
+    db = channel_db_for_level(channel, level)
     return 0 if db is None else db_to_position(db)
+
+
+def channel_level_for_db(channel: dict, db: float) -> float | None:
+    """Inverse: the percentage a channel's current dB corresponds to.
+
+    None when the channel carries no information (every level configured to
+    the same dB, so its volume says nothing about the active level).
+    """
+    table = channel_level_table(channel)
+    if not table:
+        return None
+    points = sorted(table.items())
+    if len({d for _, d in points}) == 1:
+        return None
+    if db >= points[-1][1]:
+        return float(points[-1][0])
+    if db <= FADER_MIN_DB:
+        return 0.0
+    if db <= points[0][1]:
+        low_level, low_db = points[0]
+        if low_db <= FADER_MIN_DB:
+            return 0.0
+        return low_level * (db - FADER_MIN_DB) / (low_db - FADER_MIN_DB)
+    for (l1, d1), (l2, d2) in zip(points, points[1:]):
+        if d1 <= db <= d2:
+            if d2 == d1:
+                return float(l1)
+            return l1 + (l2 - l1) * (db - d1) / (d2 - d1)
+    return float(points[-1][0])
 
 
 def signal_update(entry_id: str) -> str:

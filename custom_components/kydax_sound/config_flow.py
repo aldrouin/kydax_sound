@@ -43,15 +43,15 @@ from .const import (
     CONF_MUSISELECT_HOST,
     CONF_MUSISELECT_PORT,
     CONF_PAUSE_GROUPS,
+    DEFAULT_LEVEL_DB,
     DEFAULT_LEVELS,
     DEFAULT_MUSISELECT_PORT,
     DEFAULT_PORT,
-    DEFAULT_VOLUME_50,
-    DEFAULT_VOLUME_100,
     DOMAIN,
     FADER_MAX_DB,
     FADER_MIN_DB,
-    channel_db_for_pct,
+    channel_db_for_level,
+    channel_level_table,
 )
 from .symetrix import SymetrixClient, SymetrixError
 
@@ -111,52 +111,78 @@ MUSISELECT_SCHEMA = vol.Schema(
     }
 )
 
-CHANNEL_FIELDS = {
-    vol.Required("volume_50", default=DEFAULT_VOLUME_50): _db_selector(),
-    vol.Required("volume_100", default=DEFAULT_VOLUME_100): _db_selector(),
-}
-
-CHANNEL_SCHEMA = vol.Schema(
-    {
-        vol.Required("number"): vol.All(
-            NumberSelector(
-                NumberSelectorConfig(
-                    min=1, max=10000, step=1, mode=NumberSelectorMode.BOX
-                )
-            ),
-            vol.Coerce(int),
+def _controller_selector():
+    return vol.All(
+        NumberSelector(
+            NumberSelectorConfig(
+                min=1, max=10000, step=1, mode=NumberSelectorMode.BOX
+            )
         ),
-        vol.Required("name"): TextSelector(),
-        **CHANNEL_FIELDS,
-    }
-)
+        vol.Coerce(int),
+    )
 
-WIZARD_CHANNEL_SCHEMA = vol.Schema(
-    {
-        vol.Optional("number"): vol.All(
-            NumberSelector(
-                NumberSelectorConfig(
-                    min=1, max=10000, step=1, mode=NumberSelectorMode.BOX
-                )
-            ),
-            vol.Coerce(int),
-        ),
-        vol.Optional("name"): TextSelector(),
-        **CHANNEL_FIELDS,
-        vol.Required("add_another", default=True): BooleanSelector(),
+
+def _level_db_fields(levels: list[int]) -> dict[Any, Any]:
+    """One dB field per configured level (0% is always off)."""
+    return {
+        vol.Required(f"db_{level}", default=DEFAULT_LEVEL_DB): _db_selector()
+        for level in sorted(levels)
+        if level > 0
     }
-)
+
+
+def _channel_schema(levels: list[int], optional_identity: bool = False) -> vol.Schema:
+    identity: dict[Any, Any] = (
+        {
+            vol.Optional("number"): _controller_selector(),
+            vol.Optional("name"): TextSelector(),
+        }
+        if optional_identity
+        else {
+            vol.Required("number"): _controller_selector(),
+            vol.Required("name"): TextSelector(),
+        }
+    )
+    return vol.Schema({**identity, **_level_db_fields(levels)})
+
+
+def _wizard_channel_schema(levels: list[int]) -> vol.Schema:
+    return vol.Schema(
+        {
+            **_channel_schema(levels, optional_identity=True).schema,
+            vol.Required("add_another", default=True): BooleanSelector(),
+        }
+    )
 
 LEVELS_SCHEMA = vol.Schema({vol.Required(CONF_LEVELS): TextSelector()})
 
 
-def _channel_from_input(user_input: dict[str, Any]) -> dict[str, Any]:
+def _channel_from_input(
+    user_input: dict[str, Any], levels: list[int]
+) -> dict[str, Any]:
+    """Build a channel from the form: identity plus its dB per level."""
     return {
         "number": user_input["number"],
         "name": user_input["name"].strip(),
-        "volume_50": user_input["volume_50"],
-        "volume_100": user_input["volume_100"],
+        "levels": {
+            str(level): user_input[f"db_{level}"]
+            for level in sorted(levels)
+            if level > 0 and f"db_{level}" in user_input
+        },
     }
+
+
+def _channel_suggested(channel: dict[str, Any], levels: list[int]) -> dict[str, Any]:
+    """Prefill values for the channel form from a stored channel."""
+    table = channel_level_table(channel)
+    suggested: dict[str, Any] = {
+        "number": channel.get("number"),
+        "name": channel.get("name"),
+    }
+    for level in sorted(levels):
+        if level > 0:
+            suggested[f"db_{level}"] = table.get(level, DEFAULT_LEVEL_DB)
+    return suggested
 
 
 class InvalidCommands(ValueError):
@@ -282,6 +308,7 @@ class KydaxSoundConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """One channel per screen; uncheck "add another" to finish."""
+        schema = _wizard_channel_schema(DEFAULT_LEVELS)
         errors: dict[str, str] = {}
         if user_input is not None:
             number = user_input.get("number")
@@ -291,7 +318,9 @@ class KydaxSoundConfigFlow(ConfigFlow, domain=DOMAIN):
                     errors["number"] = "duplicate_channel"
                 else:
                     self._channels.append(
-                        _channel_from_input({**user_input, "name": name})
+                        _channel_from_input(
+                            {**user_input, "name": name}, DEFAULT_LEVELS
+                        )
                     )
             elif number or name:
                 errors["base"] = "channel_incomplete"
@@ -299,7 +328,7 @@ class KydaxSoundConfigFlow(ConfigFlow, domain=DOMAIN):
                 if user_input["add_another"]:
                     return self.async_show_form(
                         step_id="channels",
-                        data_schema=WIZARD_CHANNEL_SCHEMA,
+                        data_schema=schema,
                         description_placeholders={
                             "count": str(len(self._channels))
                         },
@@ -320,7 +349,7 @@ class KydaxSoundConfigFlow(ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="channels",
-            data_schema=WIZARD_CHANNEL_SCHEMA,
+            data_schema=schema,
             errors=errors,
             description_placeholders={"count": str(len(self._channels))},
         )
@@ -579,6 +608,10 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             menu += ["edit_channel", "remove_channel"]
         return self.async_show_menu(step_id="channels", menu_options=menu)
 
+    @property
+    def _levels(self) -> list[int]:
+        return self._options.get(CONF_LEVELS, DEFAULT_LEVELS)
+
     async def async_step_add_channel(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -589,12 +622,14 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             if any(c["number"] == user_input["number"] for c in channels):
                 errors["number"] = "duplicate_channel"
             else:
-                channels.append(_channel_from_input(user_input))
+                channels.append(_channel_from_input(user_input, self._levels))
                 options[CONF_CHANNELS] = channels
                 return self._save(options)
 
         return self.async_show_form(
-            step_id="add_channel", data_schema=CHANNEL_SCHEMA, errors=errors
+            step_id="add_channel",
+            data_schema=_channel_schema(self._levels),
+            errors=errors,
         )
 
     async def async_step_edit_channel(
@@ -618,19 +653,6 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             ),
         )
 
-    def _calibration_preview(self, channel: dict[str, Any]) -> str:
-        """What dB this channel gets at each configured level, for the form."""
-        parts = []
-        for level in self._options.get(CONF_LEVELS, DEFAULT_LEVELS):
-            db = channel_db_for_pct(
-                channel.get("volume_50", DEFAULT_VOLUME_50),
-                channel.get("volume_100", DEFAULT_VOLUME_100),
-                level,
-            )
-            value = "off" if db is None else f"{round(db, 1)} dB"
-            parts.append(f"{level}% → {value}")
-        return " · ".join(parts)
-
     async def async_step_edit_channel_form(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -651,7 +673,7 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             ):
                 errors["number"] = "duplicate_channel"
             else:
-                updated = _channel_from_input(user_input)
+                updated = _channel_from_input(user_input, self._levels)
                 options[CONF_CHANNELS] = [
                     updated if c["number"] == current["number"] else c
                     for c in channels
@@ -674,13 +696,11 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         return self.async_show_form(
             step_id="edit_channel_form",
             data_schema=self.add_suggested_values_to_schema(
-                CHANNEL_SCHEMA, current
+                _channel_schema(self._levels),
+                _channel_suggested(current, self._levels),
             ),
             errors=errors,
-            description_placeholders={
-                "name": current["name"],
-                "preview": self._calibration_preview(current),
-            },
+            description_placeholders={"name": current["name"]},
         )
 
     async def async_step_remove_channel(

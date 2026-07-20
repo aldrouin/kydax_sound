@@ -20,12 +20,16 @@
       },
       "channels": {
         "title": "Ajouter un canal",
-        "description": "Canaux ajoutés jusqu'ici : {count}. Indiquez le numéro de contrôleur du canal, un nom, et son volume calibré à 50 % et à 100 % — les autres pourcentages sont calculés entre ces deux points. Laissez le numéro et le nom vides et décochez « Ajouter un autre » pour terminer.",
+        "description": "Canaux ajoutés jusqu'ici : {count}. Indiquez le numéro de contrôleur, un nom, et le volume exact que ce canal doit jouer à chaque niveau. Laissez le numéro et le nom vides et décochez « Ajouter un autre » pour terminer.",
         "data": {
           "number": "Numéro de contrôleur",
           "name": "Nom",
-          "volume_50": "Volume à 50 %",
-          "volume_100": "Volume à 100 %",
+          "db_50": "Volume à 50 %",
+          "db_60": "Volume à 60 %",
+          "db_70": "Volume à 70 %",
+          "db_80": "Volume à 80 %",
+          "db_90": "Volume à 90 %",
+          "db_100": "Volume à 100 %",
           "add_another": "Ajouter un autre canal"
         }
       }
@@ -80,12 +84,16 @@
       },
       "add_channel": {
         "title": "Ajouter un canal",
-        "description": "Le canal joue au « Volume à 50 % » pour le niveau 50 % et au « Volume à 100 % » pour le niveau 100 % ; les autres pourcentages sont calculés entre ces deux points. 0 % = toujours coupé.",
+        "description": "Indiquez le numéro de contrôleur, un nom, et le volume exact que ce canal doit jouer à chaque niveau. Ces valeurs sont ce que les clients entendent — rien n'est calculé entre elles. Le niveau le plus élevé limite aussi le curseur de volume du canal, afin de ne pas abîmer les haut-parleurs.",
         "data": {
           "number": "Numéro de contrôleur",
           "name": "Nom",
-          "volume_50": "Volume à 50 %",
-          "volume_100": "Volume à 100 %"
+          "db_50": "Volume à 50 %",
+          "db_60": "Volume à 60 %",
+          "db_70": "Volume à 70 %",
+          "db_80": "Volume à 80 %",
+          "db_90": "Volume à 90 %",
+          "db_100": "Volume à 100 %"
         }
       },
       "edit_channel": {
@@ -96,12 +104,16 @@
       },
       "edit_channel_form": {
         "title": "Modifier un canal",
-        "description": "Le canal joue au « Volume à 50 % » pour le niveau 50 % et au « Volume à 100 % » pour le niveau 100 % ; les autres pourcentages sont calculés entre ces deux points. 0 % = toujours coupé.\n\nAvec la calibration actuelle, {name} joue à : {preview}",
+        "description": "Le volume exact que {name} joue à chaque niveau. Ces valeurs sont ce que les clients entendent — rien n'est calculé entre elles. Le niveau le plus élevé limite aussi le curseur de volume de ce canal.",
         "data": {
           "number": "Numéro de contrôleur",
           "name": "Nom",
-          "volume_50": "Volume à 50 %",
-          "volume_100": "Volume à 100 %"
+          "db_50": "Volume à 50 %",
+          "db_60": "Volume à 60 %",
+          "db_70": "Volume à 70 %",
+          "db_80": "Volume à 80 %",
+          "db_90": "Volume à 90 %",
+          "db_100": "Volume à 100 %"
         }
       },
       "remove_channel": {
@@ -290,6 +302,20 @@
         "level": {
           "name": "Niveau",
           "description": "Pourcentage de la plage de volume (0 = coupé)."
+        }
+      }
+    },
+    "set_channel_db": {
+      "name": "Régler des canaux à une valeur en dB",
+      "description": "Règle les canaux indiqués à un dB précis, limité au niveau le plus élevé configuré pour chaque canal afin de protéger les haut-parleurs.",
+      "fields": {
+        "channels": {
+          "name": "Canaux",
+          "description": "Numéros de contrôleur, ex. [7122, 7128]."
+        },
+        "db": {
+          "name": "Volume",
+          "description": "La valeur en dB à jouer, ex. -30."
         }
       }
     }

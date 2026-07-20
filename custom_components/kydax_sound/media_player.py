@@ -4,8 +4,10 @@
 - one per configured channel group: a single slider driving every channel
   in the group
 
-Sliders map through each channel's calibration, so a slider at 70% gives
-every channel its own volume-70 dB.
+Sliders map through each channel's level table, so a slider at 70% plays
+exactly the dB configured for that channel at 70%. The slider's maximum is
+the channel's highest configured level, so a channel can never be driven
+past the volume set as its 100% - the speakers are protected.
 """
 
 from __future__ import annotations
@@ -22,7 +24,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import KydaxSoundConfigEntry
-from .const import CONF_CHANNEL_GROUPS, CONF_CHANNELS
+from .const import CONF_CHANNEL_GROUPS, CONF_CHANNELS, channel_max_db
 from .coordinator import KydaxSoundHub
 from .entity import KydaxSoundEntity
 
@@ -121,7 +123,15 @@ class KydaxSoundChannelPlayer(_BasePlayer):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        attrs: dict[str, Any] = {"controller": self._number}
+        channel = self._hub.channels.get(self._number, {})
+        attrs: dict[str, Any] = {
+            "controller": self._number,
+            # the slider's 100% - the channel can never be driven past it
+            "max_db": round(channel_max_db(channel), 1) if channel else None,
+        }
+        db = self._hub.channel_db(self._number)
+        if db is not None:
+            attrs["db"] = round(db, 1)
         position = self._hub.channel_positions.get(self._number)
         if position is not None:
             attrs["position"] = position

@@ -20,12 +20,16 @@
       },
       "channels": {
         "title": "Add a channel",
-        "description": "Channels added so far: {count}. Give the channel's controller number, a name, and its calibrated volume at 50% and at 100% — other percentages are computed between these two points. Leave number and name empty and uncheck \"Add another\" to finish.",
+        "description": "Channels added so far: {count}. Give the controller number, a name, and the exact volume this channel must play at each level. Leave the number and name empty and uncheck \"Add another\" to finish.",
         "data": {
           "number": "Controller number",
           "name": "Name",
-          "volume_50": "Volume at 50%",
-          "volume_100": "Volume at 100%",
+          "db_50": "Volume at 50%",
+          "db_60": "Volume at 60%",
+          "db_70": "Volume at 70%",
+          "db_80": "Volume at 80%",
+          "db_90": "Volume at 90%",
+          "db_100": "Volume at 100%",
           "add_another": "Add another channel"
         }
       }
@@ -80,12 +84,16 @@
       },
       "add_channel": {
         "title": "Add a channel",
-        "description": "The channel plays at \"Volume at 50%\" for the 50% level and at \"Volume at 100%\" for the 100% level; other percentages are computed between these two points. 0% is always off.",
+        "description": "Give the controller number, a name, and the exact volume this channel must play at each level. The values are what guests hear - nothing is computed between them. The highest level also caps the channel's volume slider, so the speakers cannot be over-driven.",
         "data": {
           "number": "Controller number",
           "name": "Name",
-          "volume_50": "Volume at 50%",
-          "volume_100": "Volume at 100%"
+          "db_50": "Volume at 50%",
+          "db_60": "Volume at 60%",
+          "db_70": "Volume at 70%",
+          "db_80": "Volume at 80%",
+          "db_90": "Volume at 90%",
+          "db_100": "Volume at 100%"
         }
       },
       "edit_channel": {
@@ -96,12 +104,16 @@
       },
       "edit_channel_form": {
         "title": "Edit a channel",
-        "description": "The channel plays at \"Volume at 50%\" for the 50% level and at \"Volume at 100%\" for the 100% level; other percentages are computed between these two points. 0% is always off.\n\nWith the current calibration, {name} plays at: {preview}",
+        "description": "The exact volume {name} plays at each level. The values are what guests hear - nothing is computed between them. The highest level also caps this channel's volume slider.",
         "data": {
           "number": "Controller number",
           "name": "Name",
-          "volume_50": "Volume at 50%",
-          "volume_100": "Volume at 100%"
+          "db_50": "Volume at 50%",
+          "db_60": "Volume at 60%",
+          "db_70": "Volume at 70%",
+          "db_80": "Volume at 80%",
+          "db_90": "Volume at 90%",
+          "db_100": "Volume at 100%"
         }
       },
       "remove_channel": {
@@ -290,6 +302,20 @@
         "level": {
           "name": "Level",
           "description": "Percentage of the volume range (0 = off)."
+        }
+      }
+    },
+    "set_channel_db": {
+      "name": "Set channels to a dB value",
+      "description": "Sets the given channels to an explicit dB, clamped to each channel's highest configured level so speakers cannot be over-driven.",
+      "fields": {
+        "channels": {
+          "name": "Channels",
+          "description": "Controller numbers, e.g. [7122, 7128]."
+        },
+        "db": {
+          "name": "Volume",
+          "description": "The dB value to play, e.g. -30."
         }
       }
     }

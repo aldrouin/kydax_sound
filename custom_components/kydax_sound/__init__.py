@@ -19,10 +19,11 @@ from .const import (
     CONF_EVENT_BUTTONS,
     CONF_LEVELS,
     CONF_PAUSE_GROUPS,
+    DEFAULT_LEVEL_DB,
     DEFAULT_LEVELS,
-    DEFAULT_VOLUME_50,
-    DEFAULT_VOLUME_100,
     DOMAIN,
+    FADER_MAX_DB,
+    FADER_MIN_DB,
 )
 from .coordinator import KydaxSoundHub
 
@@ -43,6 +44,18 @@ SET_CHANNEL_LEVEL_SCHEMA = vol.Schema(
             cv.ensure_list, [vol.Coerce(int)], vol.Length(min=1)
         ),
         vol.Required("level"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+    }
+)
+
+SERVICE_SET_CHANNEL_DB = "set_channel_db"
+SET_CHANNEL_DB_SCHEMA = vol.Schema(
+    {
+        vol.Required("channels"): vol.All(
+            cv.ensure_list, [vol.Coerce(int)], vol.Length(min=1)
+        ),
+        vol.Required("db"): vol.All(
+            vol.Coerce(float), vol.Range(min=FADER_MIN_DB, max=FADER_MAX_DB)
+        ),
     }
 )
 
@@ -95,21 +108,33 @@ def _async_migrate_options(
 
     legacy_scenes = options.pop(_LEGACY_VOLUME_SCENES, None)
 
-    # channels: {number, name, volume_50, volume_100}. Older versions stored
-    # a default percentage instead of the calibration, with the dB values
-    # living in volume scenes named after the percentages.
+    # channels: {number, name, levels: {"50": dB, ...}} - one explicit dB per
+    # level. Earlier versions stored a two-point calibration (volume_50 /
+    # volume_100) and, before that, the dB lived in volume scenes named after
+    # the percentages. Both are converted to the level table here.
+    levels = options.get(CONF_LEVELS, DEFAULT_LEVELS)
     channels = []
     for channel in options.get(CONF_CHANNELS, []):
         channel = dict(channel)
         channel.pop("default_pct", None)
-        for key, level, fallback in (
-            ("volume_50", 50, DEFAULT_VOLUME_50),
-            ("volume_100", 100, DEFAULT_VOLUME_100),
-        ):
-            if channel.get(key) is None:
-                channel[key] = _legacy_level_db(
-                    legacy_scenes, channel.get("number"), level, fallback
+        volume_50 = channel.pop("volume_50", None)
+        volume_100 = channel.pop("volume_100", None)
+        if not channel.get("levels"):
+            if volume_50 is None:
+                volume_50 = _legacy_level_db(
+                    legacy_scenes, channel.get("number"), 50, DEFAULT_LEVEL_DB
                 )
+            if volume_100 is None:
+                volume_100 = _legacy_level_db(
+                    legacy_scenes, channel.get("number"), 100, DEFAULT_LEVEL_DB
+                )
+            channel["levels"] = {
+                str(level): round(
+                    _legacy_interpolated_db(volume_50, volume_100, level), 1
+                )
+                for level in sorted(levels)
+                if level > 0
+            }
         channels.append(channel)
     if channels or CONF_CHANNELS in options:
         options[CONF_CHANNELS] = channels
@@ -130,6 +155,19 @@ def _async_migrate_options(
     if options != before:
         _LOGGER.info("Migrated stored configuration to the current schema")
         hass.config_entries.async_update_entry(entry, options=options)
+
+
+def _legacy_interpolated_db(
+    volume_50: float, volume_100: float, level: int
+) -> float:
+    """The dB the pre-0.14 two-point calibration produced for a level.
+
+    Used once, when converting an old channel to an explicit level table, so
+    the volumes stay exactly what they were before the update.
+    """
+    if level >= 50:
+        return volume_50 + (volume_100 - volume_50) * (level - 50) / 50
+    return FADER_MIN_DB + (volume_50 - FADER_MIN_DB) * level / 50
 
 
 def _legacy_level_db(
@@ -182,6 +220,14 @@ def _async_register_services(hass: HomeAssistant) -> None:
             if mine:
                 await hub.async_set_channels_pct(mine, call.data["level"])
 
+    async def _async_handle_set_channel_db(call: ServiceCall) -> None:
+        """Set the given channels to an explicit dB (capped at their max)."""
+        numbers = call.data["channels"]
+        for hub in _loaded_hubs():
+            mine = [n for n in numbers if n in hub.channels]
+            if mine:
+                await hub.async_set_channels_db(mine, call.data["db"])
+
     async def _async_handle_trigger_event(call: ServiceCall) -> None:
         """Start a configured event (preset -> delay -> command -> duration
         -> return preset) by its name."""
@@ -201,6 +247,12 @@ def _async_register_services(hass: HomeAssistant) -> None:
         SERVICE_SET_CHANNEL_LEVEL,
         _async_handle_set_channel_level,
         schema=SET_CHANNEL_LEVEL_SCHEMA,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_CHANNEL_DB,
+        _async_handle_set_channel_db,
+        schema=SET_CHANNEL_DB_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN,

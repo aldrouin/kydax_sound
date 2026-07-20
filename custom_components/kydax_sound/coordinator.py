@@ -29,13 +29,13 @@ from .const import (
     DEFAULT_LEVELS,
     DEFAULT_MUSISELECT_PORT,
     DEFAULT_PORT,
-    DEFAULT_VOLUME_50,
-    DEFAULT_VOLUME_100,
-    POSITION_MAX,
+    FADER_MIN_DB,
     POLL_SECONDS,
-    channel_db_for_pct,
-    channel_pct_for_db,
-    channel_position_for_pct,
+    channel_db_for_level,
+    channel_level_for_db,
+    channel_max_db,
+    channel_position_for_level,
+    db_to_position,
     position_to_db,
     signal_update,
 )
@@ -231,11 +231,7 @@ class KydaxSoundHub:
         """The dB each channel plays at for a level, keyed by channel name."""
         values: dict[str, float | str] = {}
         for channel in self.channels.values():
-            db = channel_db_for_pct(
-                channel.get("volume_50", DEFAULT_VOLUME_50),
-                channel.get("volume_100", DEFAULT_VOLUME_100),
-                level,
-            )
+            db = channel_db_for_level(channel, level)
             values[channel["name"]] = "off" if db is None else round(db, 1)
         return values
 
@@ -259,7 +255,7 @@ class KydaxSoundHub:
                 if number in paused:
                     skipped.append(number)
                     continue
-                position = channel_position_for_pct(channel, level)
+                position = channel_position_for_level(channel, level)
                 await self.symetrix.async_set(number, position)
                 self.channel_positions[number] = position
         except SymetrixError as err:
@@ -274,10 +270,10 @@ class KydaxSoundHub:
     # --- per-channel volume (media players) -----------------------------------
 
     def channel_pct(self, number: int) -> float | None:
-        """The channel's current volume as a percentage, from its calibration.
+        """The channel's current volume as a percentage of its level table.
 
-        None until the position is known. Flat-calibrated channels fall back
-        to the raw position fraction.
+        None until the position is known. Channels whose levels are all the
+        same dB fall back to their position relative to that level.
         """
         position = self.channel_positions.get(number)
         channel = self.channels.get(number)
@@ -285,12 +281,57 @@ class KydaxSoundHub:
             return None
         if position == 0:
             return 0.0
-        pct = channel_pct_for_db(
-            channel.get("volume_50", DEFAULT_VOLUME_50),
-            channel.get("volume_100", DEFAULT_VOLUME_100),
-            position_to_db(position),
-        )
-        return pct if pct is not None else position / POSITION_MAX * 100
+        db = position_to_db(position)
+        pct = channel_level_for_db(channel, db)
+        if pct is not None:
+            return pct
+        maximum = channel_max_db(channel)
+        if maximum <= FADER_MIN_DB:
+            return 0.0
+        span = maximum - FADER_MIN_DB
+        return max(0.0, min(100.0, (db - FADER_MIN_DB) / span * 100))
+
+    def channel_db(self, number: int) -> float | None:
+        """The channel's current volume in dB, None while unknown."""
+        position = self.channel_positions.get(number)
+        if position is None:
+            return None
+        return position_to_db(position)
+
+    async def async_set_channels_db(
+        self, numbers: list[int], db: float
+    ) -> None:
+        """Set channels to an explicit dB, never above their configured max.
+
+        This is the old set_db behaviour: you give the dB, that dB is what
+        the appliance plays - clamped to the channel's 100% level so a
+        speaker cannot be over-driven.
+        """
+        unknown = [n for n in numbers if n not in self.channels]
+        if unknown:
+            raise HomeAssistantError(f"Unknown channel(s): {unknown}")
+        paused = self.paused_channels
+        written: dict[int, int] = {}
+        try:
+            for number in numbers:
+                if number in paused:
+                    continue
+                channel = self.channels[number]
+                capped = min(db, channel_max_db(channel))
+                if capped < db:
+                    _LOGGER.info(
+                        "Channel %s capped at its maximum %.1f dB (asked %.1f)",
+                        number,
+                        capped,
+                        db,
+                    )
+                position = db_to_position(capped)
+                await self.symetrix.async_set(number, position)
+                written[number] = position
+        except SymetrixError as err:
+            raise HomeAssistantError(f"Volume change failed: {err}") from err
+        self._update_level_from_positions(written)
+        self._dispatch()
 
     async def async_set_channels_pct(
         self, numbers: list[int], pct: float
@@ -311,7 +352,7 @@ class KydaxSoundHub:
                 if number in paused:
                     skipped.append(number)
                     continue
-                position = channel_position_for_pct(self.channels[number], pct)
+                position = channel_position_for_level(self.channels[number], pct)
                 await self.symetrix.async_set(number, position)
                 written[number] = position
         except SymetrixError as err:
@@ -330,7 +371,7 @@ class KydaxSoundHub:
             raise HomeAssistantError(
                 "This channel is paused (ce canal est en pause)"
             )
-        position = channel_position_for_pct(channel, pct)
+        position = channel_position_for_level(channel, pct)
         try:
             await self.symetrix.async_set(number, position)
         except SymetrixError as err:
@@ -526,11 +567,7 @@ class KydaxSoundHub:
             if position == 0:
                 implied.append(0.0)
                 continue
-            pct = channel_pct_for_db(
-                channel.get("volume_50", DEFAULT_VOLUME_50),
-                channel.get("volume_100", DEFAULT_VOLUME_100),
-                position_to_db(position),
-            )
+            pct = channel_level_for_db(channel, position_to_db(position))
             if pct is not None:
                 implied.append(pct)
         if implied:
