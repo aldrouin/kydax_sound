@@ -20,6 +20,7 @@ from collections.abc import Callable
 _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_PORT = 48630
+POSITION_MAX = 65535  # controller positions are 16-bit whole numbers
 REQUEST_TIMEOUT = 1.0  # seconds to wait for a response datagram
 REQUEST_RETRIES = 3  # total attempts per command
 # Minimum gap between consecutive commands. Commands are already
@@ -188,13 +189,19 @@ class SymetrixClient:
     # --- commands (PROTOCOL.md) ----------------------------------------------
 
     async def async_set(self, controller: int, position: int) -> None:
-        """CS: set a controller to an absolute position (0-65535)."""
-        command = f"CS {controller} {position}"
+        """CS: set a controller to an absolute position (0-65535).
+
+        The protocol only accepts whole numbers, so the value is coerced and
+        clamped here - the appliance NAKs anything with a decimal point.
+        """
+        position = max(0, min(POSITION_MAX, int(round(position))))
+        command = f"CS {int(controller)} {position}"
         self._expect_ack(await self._async_request(command), command)
 
     async def async_change(self, controller: int, amount: int) -> None:
         """CC: change a controller by a relative amount (sign = direction)."""
-        command = f"CC {controller} {1 if amount >= 0 else 0} {abs(amount)}"
+        amount = int(round(amount))
+        command = f"CC {int(controller)} {1 if amount >= 0 else 0} {abs(amount)}"
         self._expect_ack(await self._async_request(command), command)
 
     async def async_get(self, controller: int) -> int:

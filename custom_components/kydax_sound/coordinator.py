@@ -163,6 +163,7 @@ class KydaxSoundHub:
         configured as a channel's 100% is a hard limit no matter which path
         asked for the change - level, slider, service or pause restore.
         """
+        position = int(round(position))  # the protocol takes whole numbers
         channel = self.channels.get(number)
         if channel is not None:
             ceiling = db_to_position(channel_max_db(channel))
