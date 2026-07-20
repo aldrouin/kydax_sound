@@ -32,6 +32,7 @@ from homeassistant.helpers.selector import (
     SelectSelectorConfig,
     SelectSelectorMode,
     TextSelector,
+    TextSelectorConfig,
 )
 
 from .const import (
@@ -64,6 +65,16 @@ def _port_selector():
         ),
         vol.Coerce(int),
     )
+
+
+def _optional_int(minimum: int, maximum: int, unit: str | None = None):
+    """An optional whole number that may also be cleared (submitted as None)."""
+    config = NumberSelectorConfig(
+        min=minimum, max=maximum, step=1, mode=NumberSelectorMode.BOX
+    )
+    if unit is not None:
+        config["unit_of_measurement"] = unit
+    return vol.Any(None, vol.All(NumberSelector(config), vol.Coerce(int)))
 
 
 def _db_selector():
@@ -863,38 +874,13 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         return vol.Schema(
             {
                 vol.Required("name"): TextSelector(),
-                vol.Optional("preset"): vol.All(
-                    NumberSelector(
-                        NumberSelectorConfig(
-                            min=1, max=150, step=1, mode=NumberSelectorMode.BOX
-                        )
-                    ),
-                    vol.Coerce(int),
+                vol.Optional("preset"): _optional_int(1, 150),
+                vol.Optional("command"): vol.Any(None, TextSelector()),
+                vol.Optional("options"): vol.Any(
+                    None, TextSelector(TextSelectorConfig(multiline=True))
                 ),
-                vol.Optional("command"): TextSelector(),
-                vol.Optional("options"): TextSelector(
-                    TextSelectorConfig(multiline=True)
-                ),
-                vol.Optional("duration"): vol.All(
-                    NumberSelector(
-                        NumberSelectorConfig(
-                            min=1,
-                            max=3600,
-                            step=1,
-                            mode=NumberSelectorMode.BOX,
-                            unit_of_measurement="s",
-                        )
-                    ),
-                    vol.Coerce(int),
-                ),
-                vol.Optional("return_preset"): vol.All(
-                    NumberSelector(
-                        NumberSelectorConfig(
-                            min=1, max=150, step=1, mode=NumberSelectorMode.BOX
-                        )
-                    ),
-                    vol.Coerce(int),
-                ),
+                vol.Optional("duration"): _optional_int(1, 3600, "s"),
+                vol.Optional("return_preset"): _optional_int(1, 150),
             }
         )
 
