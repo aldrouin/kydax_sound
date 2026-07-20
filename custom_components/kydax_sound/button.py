@@ -1,10 +1,9 @@
 """Button platform for Kydax Sound.
 
-- one button per volume level percentage (like the old switchson_* buttons)
 - reset-to-default-volumes button
 - diagnostic flash-LEDs button
 
-Events are switches (switch.py) so their running state is visible.
+Volume levels and events are switches (switch.py) so their state is visible.
 """
 
 from __future__ import annotations
@@ -30,7 +29,6 @@ async def async_setup_entry(
     entities: list[ButtonEntity] = [FlashUnitButton(hub)]
     if entry.options.get(CONF_CHANNELS):
         entities.append(ResetVolumesButton(hub))
-        entities.extend(VolumeLevelButton(hub, level) for level in hub.levels)
     async_add_entities(entities)
 
 
@@ -60,27 +58,3 @@ class ResetVolumesButton(KydaxSoundEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         await self._hub.async_reset_volumes()
-
-
-class VolumeLevelButton(KydaxSoundEntity, ButtonEntity):
-    """Sets every channel to its calibrated volume for this percentage.
-
-    Paused channels are skipped.
-    """
-
-    _attr_translation_key = "volume_level"
-    _attr_icon = "mdi:volume-medium"
-
-    def __init__(self, hub: KydaxSoundHub, level: int) -> None:
-        super().__init__(hub)
-        self._level = level
-        self._attr_unique_id = f"{hub.entry.entry_id}_level_{level}"
-        self._attr_translation_placeholders = {"level": str(level)}
-
-    @property
-    def extra_state_attributes(self) -> dict:
-        """The dB this level sends to each channel (dashboard visibility)."""
-        return {"level": self._level, "values": self._hub.level_values(self._level)}
-
-    async def async_press(self) -> None:
-        await self._hub.async_apply_level(self._level)

@@ -153,13 +153,18 @@ def _async_prune_stale_entities(
         if levels:
             valid_ids.add(f"{entry.entry_id}_volume_level")
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if (
-            "_pause_" in reg_entry.unique_id
-            or "_scene_" in reg_entry.unique_id
-            or "_event_" in reg_entry.unique_id
-            or "_level_" in reg_entry.unique_id
-            or reg_entry.unique_id.endswith("_volume_scene")
-            or reg_entry.unique_id.endswith("_volume_level")
-            or reg_entry.unique_id.endswith("_reset_volumes")
-        ) and reg_entry.unique_id not in valid_ids:
+        unique_id = reg_entry.unique_id
+        # levels moved from buttons to switches in 0.5.0
+        stale_level = "_level_" in unique_id and (
+            reg_entry.domain != "switch" or unique_id not in valid_ids
+        )
+        stale_other = (
+            "_pause_" in unique_id
+            or "_scene_" in unique_id
+            or "_event_" in unique_id
+            or unique_id.endswith("_volume_scene")
+            or unique_id.endswith("_volume_level")
+            or unique_id.endswith("_reset_volumes")
+        ) and unique_id not in valid_ids
+        if stale_level or stale_other:
             registry.async_remove(reg_entry.entity_id)

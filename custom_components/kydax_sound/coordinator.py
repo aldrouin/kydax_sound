@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import math
 from dataclasses import dataclass, field
 from datetime import timedelta
 
@@ -32,7 +33,9 @@ from .const import (
     DEFAULT_VOLUME_100,
     POLL_SECONDS,
     channel_db_for_pct,
+    channel_pct_for_db,
     channel_position_for_pct,
+    position_to_db,
     signal_update,
 )
 from .musiselect import MusiSelectClient, MusiSelectError
@@ -361,9 +364,18 @@ class KydaxSoundHub:
     # --- polling -----------------------------------------------------------
 
     async def _async_poll(self, _now) -> None:
-        """Verify the appliance is reachable; drives entity availability."""
+        """Read the appliance state; drives availability and the active level.
+
+        Reading the channels also detects manual volume changes: each
+        channel's dB implies a percentage through its calibration, and the
+        floored average of those becomes the active level.
+        """
         try:
-            await self.symetrix.async_ping()
+            if self.channels:
+                positions = await self._async_read_positions()
+                self._update_level_from_positions(positions)
+            else:
+                await self.symetrix.async_ping()
         except SymetrixError as err:
             if self.available:
                 _LOGGER.warning("Symetrix appliance is unreachable: %s", err)
@@ -373,6 +385,48 @@ class KydaxSoundHub:
                 _LOGGER.info("Symetrix appliance is reachable")
             self.available = True
         self._dispatch()
+
+    async def _async_read_positions(self) -> dict[int, int]:
+        """Read the current position of every configured channel."""
+        numbers = sorted(self.channels)
+        span = numbers[-1] - numbers[0] + 1
+        if span <= 256:
+            block = await self.symetrix.async_get_block(numbers[0], span)
+            return {n: block[n] for n in numbers if n in block}
+        positions: dict[int, int] = {}
+        for number in numbers:
+            positions[number] = await self.symetrix.async_get(number)
+        return positions
+
+    @callback
+    def _update_level_from_positions(self, positions: dict[int, int]) -> None:
+        """Derive the active level from actual channel volumes.
+
+        Paused channels are excluded (they are muted on purpose), and so are
+        flat-calibrated channels (same dB at every level, no information).
+        """
+        paused = self.paused_channels
+        implied: list[float] = []
+        for number, position in positions.items():
+            channel = self.channels.get(number)
+            if channel is None or number in paused:
+                continue
+            if position == 0:
+                implied.append(0.0)
+                continue
+            pct = channel_pct_for_db(
+                channel.get("volume_50", DEFAULT_VOLUME_50),
+                channel.get("volume_100", DEFAULT_VOLUME_100),
+                position_to_db(position),
+            )
+            if pct is not None:
+                implied.append(pct)
+        if implied:
+            # +0.01 absorbs the 16-bit position quantization so an exactly
+            # applied level (e.g. 70) never floors down to 69
+            self.active_level = math.floor(
+                sum(implied) / len(implied) + 0.01
+            )
 
     # --- helpers -----------------------------------------------------------
 

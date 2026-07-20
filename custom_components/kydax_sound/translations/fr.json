@@ -242,7 +242,9 @@
       },
       "reset_volumes": {
         "name": "Réinitialiser les volumes par défaut"
-      },
+      }
+    },
+    "switch": {
       "volume_level": {
         "name": "Volume {level} %"
       }

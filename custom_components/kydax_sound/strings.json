@@ -242,7 +242,9 @@
       },
       "reset_volumes": {
         "name": "Reset volumes to defaults"
-      },
+      }
+    },
+    "switch": {
       "volume_level": {
         "name": "Volume {level}%"
       }

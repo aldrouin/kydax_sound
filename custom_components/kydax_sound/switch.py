@@ -15,7 +15,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import KydaxSoundConfigEntry
-from .const import CONF_EVENT_BUTTONS, CONF_PAUSE_GROUPS
+from .const import CONF_CHANNELS, CONF_EVENT_BUTTONS, CONF_PAUSE_GROUPS
 from .coordinator import KydaxSoundHub
 from .entity import KydaxSoundEntity
 
@@ -25,12 +25,16 @@ async def async_setup_entry(
     entry: KydaxSoundConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up pause switches and event switches."""
+    """Set up pause, volume level and event switches."""
     hub = entry.runtime_data
     entities: list[SwitchEntity] = [
         KydaxSoundPauseSwitch(hub, group)
         for group in entry.options.get(CONF_PAUSE_GROUPS, [])
     ]
+    if entry.options.get(CONF_CHANNELS):
+        entities.extend(
+            KydaxSoundLevelSwitch(hub, level) for level in hub.levels
+        )
     entities.extend(
         KydaxSoundEventSwitch(hub, event)
         for event in entry.options.get(CONF_EVENT_BUTTONS, [])
@@ -82,6 +86,42 @@ class KydaxSoundPauseSwitch(KydaxSoundEntity, SwitchEntity, RestoreEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._hub.async_set_pause(self._group["id"], False)
+
+
+class KydaxSoundLevelSwitch(KydaxSoundEntity, SwitchEntity):
+    """On when this percentage is the current sound level.
+
+    Turning it on applies the level (each channel gets its calibrated dB,
+    paused channels skipped). The active level is re-derived from the actual
+    channel volumes every poll, so manual changes on the appliance are
+    reflected here. Turning it off does nothing — activate another level
+    instead.
+    """
+
+    _attr_translation_key = "volume_level"
+    _attr_icon = "mdi:volume-medium"
+
+    def __init__(self, hub: KydaxSoundHub, level: int) -> None:
+        super().__init__(hub)
+        self._level = level
+        self._attr_unique_id = f"{hub.entry.entry_id}_level_{level}"
+        self._attr_translation_placeholders = {"level": str(level)}
+
+    @property
+    def is_on(self) -> bool:
+        return self._hub.active_level == self._level
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """The dB this level sends to each channel (dashboard visibility)."""
+        return {"level": self._level, "values": self._hub.level_values(self._level)}
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._hub.async_apply_level(self._level)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        # a level is deactivated by activating another one
+        self.async_write_ha_state()
 
 
 class KydaxSoundEventSwitch(KydaxSoundEntity, SwitchEntity):

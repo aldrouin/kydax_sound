@@ -65,6 +65,26 @@ def channel_db_for_pct(
     return FADER_MIN_DB + (volume_50 - FADER_MIN_DB) * pct / 50
 
 
+def channel_pct_for_db(
+    volume_50: float, volume_100: float, db: float
+) -> float | None:
+    """Inverse of channel_db_for_pct: the percentage a channel's current dB
+    implies, given its calibration.
+
+    None when the channel carries no information (flat calibration, where
+    every level sounds the same). Clamped to 0-100.
+    """
+    if volume_100 == volume_50:
+        return None
+    if db >= volume_50:
+        pct = 50 + 50 * (db - volume_50) / (volume_100 - volume_50)
+    elif volume_50 == FADER_MIN_DB:
+        pct = 0.0
+    else:
+        pct = 50 * (db - FADER_MIN_DB) / (volume_50 - FADER_MIN_DB)
+    return max(0.0, min(100.0, pct))
+
+
 def channel_position_for_pct(channel: dict, pct: float) -> int:
     """The controller position for a channel dict at a percentage level."""
     db = channel_db_for_pct(
