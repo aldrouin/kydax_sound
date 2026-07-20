@@ -30,6 +30,7 @@ from .const import (
     DEFAULT_PORT,
     DEFAULT_VOLUME_50,
     DEFAULT_VOLUME_100,
+    POSITION_MAX,
     POLL_SECONDS,
     channel_db_for_pct,
     channel_pct_for_db,
@@ -92,6 +93,8 @@ class KydaxSoundHub:
             for channel in entry.options.get(CONF_CHANNELS, [])
         }
         self.levels: list[int] = entry.options.get(CONF_LEVELS, DEFAULT_LEVELS)
+        # last known controller position per channel (from polls and writes)
+        self.channel_positions: dict[int, int] = {}
         self.pause_groups: dict[str, dict] = {
             group["id"]: group for group in entry.options.get(CONF_PAUSE_GROUPS, [])
         }
@@ -192,6 +195,7 @@ class KydaxSoundHub:
                 saved[channel] = await self.symetrix.async_get(channel)
             for channel in channels:
                 await self.symetrix.async_set(channel, 0)
+                self.channel_positions[channel] = 0
                 muted.append(channel)
         except SymetrixError as err:
             for channel in muted:  # best-effort rollback of a partial pause
@@ -211,7 +215,7 @@ class KydaxSoundHub:
                 await self.symetrix.async_set(channel, state.saved[channel])
             except SymetrixError as err:
                 raise HomeAssistantError(f"Resume failed: {err}") from err
-            state.saved.pop(channel)
+            self.channel_positions[channel] = state.saved.pop(channel)
         state.is_on = False
 
     # --- volume levels -------------------------------------------------------
@@ -248,9 +252,9 @@ class KydaxSoundHub:
                 if number in paused:
                     skipped.append(number)
                     continue
-                await self.symetrix.async_set(
-                    number, channel_position_for_pct(channel, level)
-                )
+                position = channel_position_for_pct(channel, level)
+                await self.symetrix.async_set(number, position)
+                self.channel_positions[number] = position
         except SymetrixError as err:
             raise HomeAssistantError(f"Volume level failed: {err}") from err
         if skipped:
@@ -258,6 +262,45 @@ class KydaxSoundHub:
                 "Level %s%% skipped paused channels: %s", level, skipped
             )
         self.active_level = level
+        self._dispatch()
+
+    # --- per-channel volume (media players) -----------------------------------
+
+    def channel_pct(self, number: int) -> float | None:
+        """The channel's current volume as a percentage, from its calibration.
+
+        None until the position is known. Flat-calibrated channels fall back
+        to the raw position fraction.
+        """
+        position = self.channel_positions.get(number)
+        channel = self.channels.get(number)
+        if position is None or channel is None:
+            return None
+        if position == 0:
+            return 0.0
+        pct = channel_pct_for_db(
+            channel.get("volume_50", DEFAULT_VOLUME_50),
+            channel.get("volume_100", DEFAULT_VOLUME_100),
+            position_to_db(position),
+        )
+        return pct if pct is not None else position / POSITION_MAX * 100
+
+    async def async_set_channel_pct(self, number: int, pct: float) -> None:
+        """Set one channel's volume by percentage (through its calibration)."""
+        channel = self.channels.get(number)
+        if channel is None:
+            raise HomeAssistantError(f"Unknown channel {number}")
+        if number in self.paused_channels:
+            raise HomeAssistantError(
+                "This channel is paused (ce canal est en pause)"
+            )
+        position = channel_position_for_pct(channel, pct)
+        try:
+            await self.symetrix.async_set(number, position)
+        except SymetrixError as err:
+            raise HomeAssistantError(f"Volume change failed: {err}") from err
+        # refresh the derived active level with the new position included
+        self._update_level_from_positions({number: position})
         self._dispatch()
 
     # --- event buttons -------------------------------------------------------
@@ -389,6 +432,7 @@ class KydaxSoundHub:
         Paused channels are excluded (they are muted on purpose), and so are
         flat-calibrated channels (same dB at every level, no information).
         """
+        self.channel_positions.update(positions)
         paused = self.paused_channels
         implied: list[float] = []
         for number, position in positions.items():

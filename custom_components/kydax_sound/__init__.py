@@ -30,6 +30,7 @@ SERVICE_CANCEL_EVENT = "cancel_event"
 EVENT_NAME_SCHEMA = vol.Schema({vol.Required("name"): str})
 
 PLATFORMS: list[Platform] = [
+    Platform.MEDIA_PLAYER,
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
@@ -150,6 +151,10 @@ def _async_prune_stale_entities(
         valid_ids.update(f"{entry.entry_id}_level_{level}" for level in levels)
         if levels:
             valid_ids.add(f"{entry.entry_id}_volume_level")
+    valid_ids.update(
+        f"{entry.entry_id}_channel_{channel['number']}"
+        for channel in entry.options.get(CONF_CHANNELS, [])
+    )
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         unique_id = reg_entry.unique_id
         # levels moved from buttons to switches in 0.5.0
@@ -160,6 +165,7 @@ def _async_prune_stale_entities(
             "_pause_" in unique_id
             or "_scene_" in unique_id
             or "_event_" in unique_id
+            or "_channel_" in unique_id
             or unique_id.endswith("_volume_scene")
             or unique_id.endswith("_volume_level")
             or unique_id.endswith("_reset_volumes")
