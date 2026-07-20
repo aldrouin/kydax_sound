@@ -30,6 +30,7 @@ from .const import (
     DEFAULT_MUSISELECT_PORT,
     DEFAULT_PORT,
     FADER_MIN_DB,
+    POSITION_MAX,
     POLL_SECONDS,
     channel_db_for_level,
     channel_level_for_db,
@@ -153,6 +154,31 @@ class KydaxSoundHub:
         if self.musiselect is not None:
             self.musiselect.disconnect()
 
+    # --- writing to the appliance --------------------------------------------
+
+    async def _async_write(self, number: int, position: int) -> int:
+        """Send one channel position, never above the channel's ceiling.
+
+        Every write in this integration goes through here, so the volume
+        configured as a channel's 100% is a hard limit no matter which path
+        asked for the change - level, slider, service or pause restore.
+        """
+        channel = self.channels.get(number)
+        if channel is not None:
+            ceiling = db_to_position(channel_max_db(channel))
+            if position > ceiling:
+                _LOGGER.warning(
+                    "Channel %s: %s exceeds its maximum, capped to %s",
+                    number,
+                    position,
+                    ceiling,
+                )
+                position = ceiling
+        position = max(0, min(POSITION_MAX, position))
+        await self.symetrix.async_set(number, position)
+        self.channel_positions[number] = position
+        return position
+
     # --- pause groups ------------------------------------------------------
 
     @property
@@ -201,13 +227,12 @@ class KydaxSoundHub:
             for channel in channels:
                 saved[channel] = await self.symetrix.async_get(channel)
             for channel in channels:
-                await self.symetrix.async_set(channel, 0)
-                self.channel_positions[channel] = 0
+                await self._async_write(channel, 0)
                 muted.append(channel)
         except SymetrixError as err:
             for channel in muted:  # best-effort rollback of a partial pause
                 try:
-                    await self.symetrix.async_set(channel, saved[channel])
+                    await self._async_write(channel, saved[channel])
                 except SymetrixError:
                     _LOGGER.warning("Rollback failed for channel %s", channel)
             raise HomeAssistantError(f"Pause failed: {err}") from err
@@ -219,10 +244,10 @@ class KydaxSoundHub:
         # partial failure only touches the remaining ones.
         for channel in list(state.saved):
             try:
-                await self.symetrix.async_set(channel, state.saved[channel])
+                await self._async_write(channel, state.saved[channel])
             except SymetrixError as err:
                 raise HomeAssistantError(f"Resume failed: {err}") from err
-            self.channel_positions[channel] = state.saved.pop(channel)
+            state.saved.pop(channel)
         state.is_on = False
 
     # --- volume levels -------------------------------------------------------
@@ -250,14 +275,16 @@ class KydaxSoundHub:
         """
         paused = self.paused_channels
         skipped: list[int] = []
+        written: dict[int, int] = {}
         try:
             for number, channel in self.channels.items():
                 if number in paused:
                     skipped.append(number)
                     continue
-                position = channel_position_for_level(channel, level)
-                await self.symetrix.async_set(number, position)
-                self.channel_positions[number] = position
+                position = await self._async_write(
+                    number, channel_position_for_level(channel, level)
+                )
+                written[number] = position
         except SymetrixError as err:
             raise HomeAssistantError(f"Volume level failed: {err}") from err
         if skipped:
@@ -325,9 +352,9 @@ class KydaxSoundHub:
                         capped,
                         db,
                     )
-                position = db_to_position(capped)
-                await self.symetrix.async_set(number, position)
-                written[number] = position
+                written[number] = await self._async_write(
+                    number, db_to_position(capped)
+                )
         except SymetrixError as err:
             raise HomeAssistantError(f"Volume change failed: {err}") from err
         self._update_level_from_positions(written)
@@ -352,9 +379,9 @@ class KydaxSoundHub:
                 if number in paused:
                     skipped.append(number)
                     continue
-                position = channel_position_for_level(self.channels[number], pct)
-                await self.symetrix.async_set(number, position)
-                written[number] = position
+                written[number] = await self._async_write(
+                    number, channel_position_for_level(self.channels[number], pct)
+                )
         except SymetrixError as err:
             raise HomeAssistantError(f"Volume change failed: {err}") from err
         if skipped:
@@ -371,9 +398,10 @@ class KydaxSoundHub:
             raise HomeAssistantError(
                 "This channel is paused (ce canal est en pause)"
             )
-        position = channel_position_for_level(channel, pct)
         try:
-            await self.symetrix.async_set(number, position)
+            position = await self._async_write(
+                number, channel_position_for_level(channel, pct)
+            )
         except SymetrixError as err:
             raise HomeAssistantError(f"Volume change failed: {err}") from err
         # refresh the derived active level with the new position included
