@@ -11,6 +11,24 @@ set_level:
           unit_of_measurement: "%"
           mode: box
 
+set_channel_level:
+  fields:
+    channels:
+      required: true
+      example: "[7122, 7128]"
+      selector:
+        object:
+    level:
+      required: true
+      example: 70
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: box
+
 trigger_event:
   fields:
     name:

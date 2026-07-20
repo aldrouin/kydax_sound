@@ -287,6 +287,35 @@ class KydaxSoundHub:
         )
         return pct if pct is not None else position / POSITION_MAX * 100
 
+    async def async_set_channels_pct(
+        self, numbers: list[int], pct: float
+    ) -> None:
+        """Set several channels to a percentage in one go.
+
+        Each channel uses its own calibration; paused channels are skipped
+        rather than raising, so a group call still serves the others.
+        """
+        paused = self.paused_channels
+        unknown = [n for n in numbers if n not in self.channels]
+        if unknown:
+            raise HomeAssistantError(f"Unknown channel(s): {unknown}")
+        skipped: list[int] = []
+        written: dict[int, int] = {}
+        try:
+            for number in numbers:
+                if number in paused:
+                    skipped.append(number)
+                    continue
+                position = channel_position_for_pct(self.channels[number], pct)
+                await self.symetrix.async_set(number, position)
+                written[number] = position
+        except SymetrixError as err:
+            raise HomeAssistantError(f"Volume change failed: {err}") from err
+        if skipped:
+            _LOGGER.info("Skipped paused channels: %s", skipped)
+        self._update_level_from_positions(written)
+        self._dispatch()
+
     async def async_set_channel_pct(self, number: int, pct: float) -> None:
         """Set one channel's volume by percentage (through its calibration)."""
         channel = self.channels.get(number)

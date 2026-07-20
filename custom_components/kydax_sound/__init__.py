@@ -11,7 +11,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import config_validation as cv, entity_registry as er
 
 from .const import (
     CONF_CHANNELS,
@@ -33,6 +33,16 @@ _LEGACY_VOLUME_SCENES = "volume_scenes"
 SERVICE_SET_LEVEL = "set_level"
 SET_LEVEL_SCHEMA = vol.Schema(
     {vol.Required("level"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100))}
+)
+
+SERVICE_SET_CHANNEL_LEVEL = "set_channel_level"
+SET_CHANNEL_LEVEL_SCHEMA = vol.Schema(
+    {
+        vol.Required("channels"): vol.All(
+            cv.ensure_list, [vol.Coerce(int)], vol.Length(min=1)
+        ),
+        vol.Required("level"): vol.All(vol.Coerce(int), vol.Range(min=0, max=100)),
+    }
 )
 
 SERVICE_TRIGGER_EVENT = "trigger_event"
@@ -162,6 +172,14 @@ def _async_register_services(hass: HomeAssistant) -> None:
         for hub in _loaded_hubs():
             await hub.async_apply_level(call.data["level"])
 
+    async def _async_handle_set_channel_level(call: ServiceCall) -> None:
+        """Set the given channels to a percentage (each via its calibration)."""
+        numbers = call.data["channels"]
+        for hub in _loaded_hubs():
+            mine = [n for n in numbers if n in hub.channels]
+            if mine:
+                await hub.async_set_channels_pct(mine, call.data["level"])
+
     async def _async_handle_trigger_event(call: ServiceCall) -> None:
         """Start a configured event (preset -> delay -> command -> duration
         -> return preset) by its name."""
@@ -175,6 +193,12 @@ def _async_register_services(hass: HomeAssistant) -> None:
 
     hass.services.async_register(
         DOMAIN, SERVICE_SET_LEVEL, _async_handle_set_level, schema=SET_LEVEL_SCHEMA
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_CHANNEL_LEVEL,
+        _async_handle_set_channel_level,
+        schema=SET_CHANNEL_LEVEL_SCHEMA,
     )
     hass.services.async_register(
         DOMAIN,

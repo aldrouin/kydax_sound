@@ -245,6 +245,20 @@
           "description": "The name of the event button as configured in the options."
         }
       }
+    },
+    "set_channel_level": {
+      "name": "Set the level of specific channels",
+      "description": "Sets only the given channels to a percentage, each through its own calibration. Paused channels are skipped.",
+      "fields": {
+        "channels": {
+          "name": "Channels",
+          "description": "Controller numbers, e.g. [7122, 7128]."
+        },
+        "level": {
+          "name": "Level",
+          "description": "Percentage of the volume range (0 = off)."
+        }
+      }
     }
   },
   "entity": {

@@ -245,6 +245,20 @@
           "description": "Le nom du bouton d'événement tel que configuré dans les options."
         }
       }
+    },
+    "set_channel_level": {
+      "name": "Régler le niveau de canaux précis",
+      "description": "Règle uniquement les canaux indiqués à un pourcentage, chacun selon sa propre calibration. Les canaux en pause sont ignorés.",
+      "fields": {
+        "channels": {
+          "name": "Canaux",
+          "description": "Numéros de contrôleur, ex. [7122, 7128]."
+        },
+        "level": {
+          "name": "Niveau",
+          "description": "Pourcentage de la plage de volume (0 = coupé)."
+        }
+      }
     }
   },
   "entity": {
