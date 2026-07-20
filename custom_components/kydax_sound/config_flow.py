@@ -78,12 +78,65 @@ DEFAULT_CONFIG_FILE = "kydax_sound.json"
 DOWNLOAD_DIR = "www"
 
 
-def _export_payload(options: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "kydax_sound": {
-            key: options.get(key) for key in PORTABLE_KEYS if key in options
+def _strip_comments(value: Any) -> Any:
+    """Drop the readable annotations added on export (keys starting with _)."""
+    if isinstance(value, dict):
+        return {
+            key: _strip_comments(item)
+            for key, item in value.items()
+            if not key.startswith("_")
         }
+    if isinstance(value, list):
+        return [_strip_comments(item) for item in value]
+    return value
+
+
+def _export_payload(options: dict[str, Any]) -> dict[str, Any]:
+    """The portable configuration, annotated so it reads without guesswork.
+
+    Groups store channel numbers; the _channels lines spell out which
+    channel each number is. Everything prefixed with _ is a comment and is
+    ignored when the file is imported.
+    """
+    names = {
+        channel["number"]: channel.get("name", "?")
+        for channel in options.get(CONF_CHANNELS, [])
     }
+
+    def _label(number: int) -> str:
+        return f"{names.get(number, 'unknown channel')} ({number})"
+
+    data: dict[str, Any] = {}
+    for key in PORTABLE_KEYS:
+        if key not in options:
+            continue
+        value = options[key]
+        if key in (CONF_CHANNEL_GROUPS, CONF_PAUSE_GROUPS):
+            value = [
+                {**group, "_channels": [_label(n) for n in group.get("channels", [])]}
+                for group in value
+            ]
+        elif key == CONF_CHANNELS:
+            value = [
+                {**channel, "_volumes": _volume_comment(channel)}
+                for channel in value
+            ]
+        data[key] = value
+    return {
+        "_comment": (
+            "Kydax Sound configuration. Lines starting with _ are comments "
+            "and are ignored on import. Appliance addresses are not included."
+        ),
+        "kydax_sound": data,
+    }
+
+
+def _volume_comment(channel: dict[str, Any]) -> str:
+    """A human-readable summary of a channel's level table."""
+    table = channel_level_table(channel)
+    if not table:
+        return "no volumes configured"
+    return ", ".join(f"{level}% = {table[level]} dB" for level in sorted(table))
 
 
 def _validate_payload(payload: Any) -> str | None:
@@ -603,7 +656,7 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             except (OSError, ValueError, KeyError):
                 errors["file"] = "invalid_file"
             else:
-                payload = (
+                payload = _strip_comments(
                     data.get("kydax_sound", data) if isinstance(data, dict) else data
                 )
                 problem = _validate_payload(payload)
