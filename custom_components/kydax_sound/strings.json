@@ -3,10 +3,11 @@
     "step": {
       "user": {
         "title": "Symetrix appliance",
-        "description": "Address of the Symetrix appliance on the network.",
+        "description": "Address of the Symetrix appliance on the network. If it is not reachable yet, check \"Skip connection test\" — the controls will stay unavailable until the appliance answers.",
         "data": {
           "host": "Host",
-          "port": "Port"
+          "port": "Port",
+          "skip_test": "Skip connection test (appliance not reachable yet)"
         }
       },
       "musiselect": {
@@ -59,10 +60,11 @@
       },
       "connection": {
         "title": "Appliance connections",
-        "description": "Addresses of the Symetrix appliance and the MusiSelect music source (leave the MusiSelect host empty if there is none).",
+        "description": "Addresses of the Symetrix appliance and the MusiSelect music source (leave the MusiSelect host empty if there is none). If the Symetrix is not reachable yet, check \"Skip connection test\" — the controls will stay unavailable until it answers.",
         "data": {
           "host": "Symetrix host",
           "port": "Symetrix port",
+          "skip_test": "Skip connection test (appliance not reachable yet)",
           "musiselect_host": "MusiSelect host",
           "musiselect_port": "MusiSelect port"
         }

@@ -3,10 +3,11 @@
     "step": {
       "user": {
         "title": "Appareil Symetrix",
-        "description": "Adresse de l'appareil Symetrix sur le réseau.",
+        "description": "Adresse de l'appareil Symetrix sur le réseau. S'il n'est pas encore joignable, cochez « Ignorer le test de connexion » — les contrôles resteront indisponibles jusqu'à ce que l'appareil réponde.",
         "data": {
           "host": "Hôte",
-          "port": "Port"
+          "port": "Port",
+          "skip_test": "Ignorer le test de connexion (appareil pas encore joignable)"
         }
       },
       "musiselect": {
@@ -59,10 +60,11 @@
       },
       "connection": {
         "title": "Connexions aux appareils",
-        "description": "Adresses de l'appareil Symetrix et de la source musicale MusiSelect (laissez l'hôte MusiSelect vide s'il n'y en a pas).",
+        "description": "Adresses de l'appareil Symetrix et de la source musicale MusiSelect (laissez l'hôte MusiSelect vide s'il n'y en a pas). Si le Symetrix n'est pas encore joignable, cochez « Ignorer le test de connexion » — les contrôles resteront indisponibles jusqu'à ce qu'il réponde.",
         "data": {
           "host": "Hôte Symetrix",
           "port": "Port Symetrix",
+          "skip_test": "Ignorer le test de connexion (appareil pas encore joignable)",
           "musiselect_host": "Hôte MusiSelect",
           "musiselect_port": "Port MusiSelect"
         }

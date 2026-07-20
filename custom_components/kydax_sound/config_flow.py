@@ -84,6 +84,9 @@ CONNECTION_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_HOST): TextSelector(),
         vol.Required(CONF_PORT, default=DEFAULT_PORT): _port_selector(),
+        # deploy before the appliance is reachable: entities stay
+        # unavailable until it answers
+        vol.Required("skip_test", default=False): BooleanSelector(),
     }
 )
 
@@ -202,7 +205,8 @@ class KydaxSoundConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             await self.async_set_unique_id(user_input[CONF_HOST])
             self._abort_if_unique_id_configured()
-            if await _async_try_connect(
+            skip_test = user_input.pop("skip_test", False)
+            if skip_test or await _async_try_connect(
                 user_input[CONF_HOST], user_input[CONF_PORT]
             ):
                 self._connection = user_input
@@ -355,7 +359,8 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         )
         errors: dict[str, str] = {}
         if user_input is not None:
-            if await _async_try_connect(
+            skip_test = user_input.pop("skip_test", False)
+            if skip_test or await _async_try_connect(
                 user_input[CONF_HOST], user_input[CONF_PORT]
             ):
                 options = self._options
