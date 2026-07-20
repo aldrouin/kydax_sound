@@ -20,6 +20,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_CHANNELS,
+    CONF_CHANNEL_GROUPS,
     CONF_EVENT_BUTTONS,
     CONF_LEVELS,
     CONF_MUSISELECT_HOST,
@@ -97,6 +98,10 @@ class KydaxSoundHub:
         self.channel_positions: dict[int, int] = {}
         self.pause_groups: dict[str, dict] = {
             group["id"]: group for group in entry.options.get(CONF_PAUSE_GROUPS, [])
+        }
+        self.channel_groups: dict[str, dict] = {
+            group["id"]: group
+            for group in entry.options.get(CONF_CHANNEL_GROUPS, [])
         }
         self.event_buttons: dict[str, dict] = {
             event["id"]: event

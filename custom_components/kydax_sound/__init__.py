@@ -15,6 +15,7 @@ from homeassistant.helpers import config_validation as cv, entity_registry as er
 
 from .const import (
     CONF_CHANNELS,
+    CONF_CHANNEL_GROUPS,
     CONF_EVENT_BUTTONS,
     CONF_LEVELS,
     CONF_PAUSE_GROUPS,
@@ -124,6 +125,7 @@ def _async_migrate_options(
 
     options.setdefault(CONF_LEVELS, DEFAULT_LEVELS)
     options.setdefault(CONF_PAUSE_GROUPS, [])
+    options.setdefault(CONF_CHANNEL_GROUPS, [])
 
     if options != before:
         _LOGGER.info("Migrated stored configuration to the current schema")
@@ -262,6 +264,10 @@ def _async_prune_stale_entities(
         f"{entry.entry_id}_channel_{channel['number']}"
         for channel in entry.options.get(CONF_CHANNELS, [])
     )
+    valid_ids.update(
+        f"{entry.entry_id}_group_{group['id']}"
+        for group in entry.options.get(CONF_CHANNEL_GROUPS, [])
+    )
     for reg_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         unique_id = reg_entry.unique_id
         # levels moved from buttons to switches in 0.5.0
@@ -273,6 +279,7 @@ def _async_prune_stale_entities(
             or "_scene_" in unique_id
             or "_event_" in unique_id
             or "_channel_" in unique_id
+            or "_group_" in unique_id
             or unique_id.endswith("_volume_scene")
             or unique_id.endswith("_volume_level")
             or unique_id.endswith("_reset_volumes")

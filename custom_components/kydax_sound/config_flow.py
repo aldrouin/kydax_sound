@@ -36,6 +36,7 @@ from homeassistant.helpers.selector import (
 
 from .const import (
     CONF_CHANNELS,
+    CONF_CHANNEL_GROUPS,
     CONF_EVENT_BUTTONS,
     CONF_LEVELS,
     CONF_MUSISELECT_HOST,
@@ -310,6 +311,7 @@ class KydaxSoundOptionsFlow(OptionsFlow):
         self._edit_group_id: str | None = None
         self._edit_event_id: str | None = None
         self._edit_channel_number: int | None = None
+        self._edit_cgroup_id: str | None = None
 
     @property
     def _options(self) -> dict[str, Any]:
@@ -347,11 +349,153 @@ class KydaxSoundOptionsFlow(OptionsFlow):
             menu_options=[
                 "connection",
                 "channels",
+                "channel_groups",
                 "levels",
                 "pause_groups",
                 "event_buttons",
                 "tests",
             ],
+        )
+
+    # --- channel groups -------------------------------------------------------
+
+    def _cgroup_select_options(self) -> list[SelectOptionDict]:
+        return [
+            SelectOptionDict(value=group["id"], label=group["name"])
+            for group in self._options.get(CONF_CHANNEL_GROUPS, [])
+        ]
+
+    def _cgroup_schema(self) -> vol.Schema:
+        return vol.Schema(
+            {
+                vol.Required("name"): TextSelector(),
+                vol.Required("channels", default=[]): SelectSelector(
+                    SelectSelectorConfig(
+                        options=self._channel_select_options(),
+                        multiple=True,
+                        mode=SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+
+    async def async_step_channel_groups(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        menu = ["add_cgroup"]
+        if self._options.get(CONF_CHANNEL_GROUPS):
+            menu += ["edit_cgroup", "remove_cgroup"]
+        return self.async_show_menu(step_id="channel_groups", menu_options=menu)
+
+    async def async_step_add_cgroup(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("channels"):
+                errors["channels"] = "channels_required"
+            else:
+                options = self._options
+                groups = list(options.get(CONF_CHANNEL_GROUPS, []))
+                groups.append(
+                    {
+                        "id": uuid4().hex[:8],
+                        "name": user_input["name"],
+                        "channels": [int(n) for n in user_input["channels"]],
+                    }
+                )
+                options[CONF_CHANNEL_GROUPS] = groups
+                return self._save(options)
+
+        return self.async_show_form(
+            step_id="add_cgroup", data_schema=self._cgroup_schema(), errors=errors
+        )
+
+    async def async_step_edit_cgroup(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            self._edit_cgroup_id = user_input["group"]
+            return await self.async_step_edit_cgroup_form()
+
+        return self.async_show_form(
+            step_id="edit_cgroup",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("group"): SelectSelector(
+                        SelectSelectorConfig(
+                            options=self._cgroup_select_options(),
+                            mode=SelectSelectorMode.DROPDOWN,
+                        )
+                    )
+                }
+            ),
+        )
+
+    async def async_step_edit_cgroup_form(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        options = self._options
+        groups = list(options.get(CONF_CHANNEL_GROUPS, []))
+        current = next(
+            (g for g in groups if g["id"] == self._edit_cgroup_id), None
+        )
+        if current is None:
+            return await self.async_step_channel_groups()
+
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            if not user_input.get("channels"):
+                errors["channels"] = "channels_required"
+            else:
+                updated = {
+                    "id": current["id"],
+                    "name": user_input["name"],
+                    "channels": [int(n) for n in user_input["channels"]],
+                }
+                options[CONF_CHANNEL_GROUPS] = [
+                    updated if g["id"] == current["id"] else g for g in groups
+                ]
+                return self._save(options)
+
+        return self.async_show_form(
+            step_id="edit_cgroup_form",
+            data_schema=self.add_suggested_values_to_schema(
+                self._cgroup_schema(),
+                {
+                    "name": current["name"],
+                    "channels": [str(n) for n in current["channels"]],
+                },
+            ),
+            errors=errors,
+        )
+
+    async def async_step_remove_cgroup(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            options = self._options
+            removed = set(user_input.get("groups", []))
+            options[CONF_CHANNEL_GROUPS] = [
+                g
+                for g in options.get(CONF_CHANNEL_GROUPS, [])
+                if g["id"] not in removed
+            ]
+            return self._save(options)
+
+        return self.async_show_form(
+            step_id="remove_cgroup",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("groups", default=[]): SelectSelector(
+                        SelectSelectorConfig(
+                            options=self._cgroup_select_options(),
+                            multiple=True,
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    )
+                }
+            ),
         )
 
     # --- tests --------------------------------------------------------------
@@ -486,17 +630,18 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                     for c in channels
                 ]
                 if new_number != current["number"]:
-                    # keep pause groups pointing at the renumbered channel
-                    options[CONF_PAUSE_GROUPS] = [
-                        {
-                            **group,
-                            "channels": [
-                                new_number if n == current["number"] else n
-                                for n in group["channels"]
-                            ],
-                        }
-                        for group in options.get(CONF_PAUSE_GROUPS, [])
-                    ]
+                    # keep groups pointing at the renumbered channel
+                    for key in (CONF_PAUSE_GROUPS, CONF_CHANNEL_GROUPS):
+                        options[key] = [
+                            {
+                                **group,
+                                "channels": [
+                                    new_number if n == current["number"] else n
+                                    for n in group["channels"]
+                                ],
+                            }
+                            for group in options.get(key, [])
+                        ]
                 return self._save(options)
 
         return self.async_show_form(
@@ -522,15 +667,16 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                 for c in options.get(CONF_CHANNELS, [])
                 if c["number"] not in removed
             ]
-            options[CONF_PAUSE_GROUPS] = [
-                {
-                    **group,
-                    "channels": [
-                        n for n in group["channels"] if n not in removed
-                    ],
-                }
-                for group in options.get(CONF_PAUSE_GROUPS, [])
-            ]
+            for key in (CONF_PAUSE_GROUPS, CONF_CHANNEL_GROUPS):
+                options[key] = [
+                    {
+                        **group,
+                        "channels": [
+                            n for n in group["channels"] if n not in removed
+                        ],
+                    }
+                    for group in options.get(key, [])
+                ]
             return self._save(options)
 
         return self.async_show_form(

@@ -49,7 +49,8 @@
           "levels": "Volume levels",
           "pause_groups": "Pause groups",
           "event_buttons": "Event buttons",
-          "tests": "Tests"
+          "tests": "Tests",
+          "channel_groups": "Channel groups"
         }
       },
       "tests": {
@@ -200,6 +201,42 @@
         "title": "Remove event buttons",
         "data": {
           "events": "Event buttons to remove"
+        }
+      },
+      "channel_groups": {
+        "title": "Channel groups",
+        "menu_options": {
+          "add_cgroup": "Add a channel group",
+          "edit_cgroup": "Edit a channel group",
+          "remove_cgroup": "Remove channel groups"
+        }
+      },
+      "add_cgroup": {
+        "title": "Add a channel group",
+        "description": "A channel group gets one volume slider that drives every channel in it - each through its own calibration.",
+        "data": {
+          "name": "Name",
+          "channels": "Channels"
+        }
+      },
+      "edit_cgroup": {
+        "title": "Edit a channel group",
+        "data": {
+          "group": "Group"
+        }
+      },
+      "edit_cgroup_form": {
+        "title": "Edit a channel group",
+        "description": "A channel group gets one volume slider that drives every channel in it - each through its own calibration.",
+        "data": {
+          "name": "Name",
+          "channels": "Channels"
+        }
+      },
+      "remove_cgroup": {
+        "title": "Remove channel groups",
+        "data": {
+          "groups": "Groups to remove"
         }
       }
     },

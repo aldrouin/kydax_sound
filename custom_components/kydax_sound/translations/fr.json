@@ -49,7 +49,8 @@
           "levels": "Niveaux de volume",
           "pause_groups": "Groupes de pause",
           "event_buttons": "Boutons d'événement",
-          "tests": "Tests"
+          "tests": "Tests",
+          "channel_groups": "Groupes de canaux"
         }
       },
       "tests": {
@@ -200,6 +201,42 @@
         "title": "Supprimer des boutons d'événement",
         "data": {
           "events": "Boutons d'événement à supprimer"
+        }
+      },
+      "channel_groups": {
+        "title": "Groupes de canaux",
+        "menu_options": {
+          "add_cgroup": "Ajouter un groupe de canaux",
+          "edit_cgroup": "Modifier un groupe de canaux",
+          "remove_cgroup": "Supprimer des groupes de canaux"
+        }
+      },
+      "add_cgroup": {
+        "title": "Ajouter un groupe de canaux",
+        "description": "Un groupe de canaux obtient un curseur de volume unique qui pilote tous ses canaux — chacun selon sa propre calibration.",
+        "data": {
+          "name": "Nom",
+          "channels": "Canaux"
+        }
+      },
+      "edit_cgroup": {
+        "title": "Modifier un groupe de canaux",
+        "data": {
+          "group": "Groupe"
+        }
+      },
+      "edit_cgroup_form": {
+        "title": "Modifier un groupe de canaux",
+        "description": "Un groupe de canaux obtient un curseur de volume unique qui pilote tous ses canaux — chacun selon sa propre calibration.",
+        "data": {
+          "name": "Nom",
+          "channels": "Canaux"
+        }
+      },
+      "remove_cgroup": {
+        "title": "Supprimer des groupes de canaux",
+        "data": {
+          "groups": "Groupes à supprimer"
         }
       }
     },

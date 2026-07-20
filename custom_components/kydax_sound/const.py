@@ -21,6 +21,7 @@ POLL_SECONDS = 30
 CONF_CHANNELS = "channels"
 CONF_LEVELS = "levels"  # [int] percentages, one button each
 CONF_PAUSE_GROUPS = "pause_groups"  # [{id, name, channels: [int]}]
+CONF_CHANNEL_GROUPS = "channel_groups"  # [{id, name, channels: [int]}]
 CONF_EVENT_BUTTONS = "event_buttons"  # [{id, name, preset, command, delay, duration, return_preset}]
 
 DEFAULT_LEVELS = [0, 50, 60, 70, 80, 90, 100]
