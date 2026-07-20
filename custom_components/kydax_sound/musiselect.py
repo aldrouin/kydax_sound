@@ -69,4 +69,6 @@ class MusiSelectClient:
             raise MusiSelectError(
                 f"cannot send to MusiSelect {self._host}:{self._port}: {err}"
             ) from err
-        _LOGGER.debug("Sent to MusiSelect: %r", command)
+        _LOGGER.debug(
+            "MusiSelect %s:%s: sent %s", self._host, self._port, command
+        )

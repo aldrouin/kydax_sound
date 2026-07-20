@@ -47,7 +47,14 @@
           "channels": "Canaux",
           "levels": "Niveaux de volume",
           "pause_groups": "Groupes de pause",
-          "event_buttons": "Boutons d'événement"
+          "event_buttons": "Boutons d'événement",
+          "tests": "Tests"
+        }
+      },
+      "tests": {
+        "title": "Tests",
+        "menu_options": {
+          "flash_test": "Faire clignoter les voyants de l'appareil"
         }
       },
       "connection": {
@@ -198,6 +205,9 @@
       "channels_required": "Sélectionnez au moins un canal",
       "invalid_levels": "Niveaux invalides : pourcentages entiers entre 0 et 100, séparés par des virgules",
       "event_action_required": "Indiquez au moins un préréglage ou une commande MusiSelect"
+    },
+    "abort": {
+      "cannot_connect": "Impossible de joindre l'appareil pour lancer le test"
     }
   },
   "services": {
@@ -233,11 +243,6 @@
     }
   },
   "entity": {
-    "button": {
-      "flash_unit": {
-        "name": "Faire clignoter les voyants de l'appareil"
-      }
-    },
     "switch": {
       "volume_level": {
         "name": "Volume {level} %"

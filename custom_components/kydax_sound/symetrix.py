@@ -107,7 +107,17 @@ class SymetrixClient:
                 self._response = loop.create_future()
                 self._transport.sendto(f"{command}\r".encode("ascii"))
                 try:
-                    return await asyncio.wait_for(self._response, REQUEST_TIMEOUT)
+                    response = await asyncio.wait_for(
+                        self._response, REQUEST_TIMEOUT
+                    )
+                    _LOGGER.debug(
+                        "Symetrix %s:%s: %s -> %s",
+                        self._host,
+                        self._port,
+                        command,
+                        response.replace("\r", " | "),
+                    )
+                    return response
                 except TimeoutError:
                     last_exc = self._last_error or TimeoutError(
                         f"no response to {command!r} (attempt {attempt}/{REQUEST_RETRIES})"

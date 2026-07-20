@@ -47,7 +47,14 @@
           "channels": "Channels",
           "levels": "Volume levels",
           "pause_groups": "Pause groups",
-          "event_buttons": "Event buttons"
+          "event_buttons": "Event buttons",
+          "tests": "Tests"
+        }
+      },
+      "tests": {
+        "title": "Tests",
+        "menu_options": {
+          "flash_test": "Flash the unit's LEDs"
         }
       },
       "connection": {
@@ -198,6 +205,9 @@
       "channels_required": "Select at least one channel",
       "invalid_levels": "Invalid levels: whole percentages between 0 and 100, separated by commas",
       "event_action_required": "Set at least a preset or a MusiSelect command"
+    },
+    "abort": {
+      "cannot_connect": "Could not reach the appliance to run the test"
     }
   },
   "services": {
@@ -233,11 +243,6 @@
     }
   },
   "entity": {
-    "button": {
-      "flash_unit": {
-        "name": "Flash unit LEDs"
-      }
-    },
     "switch": {
       "volume_level": {
         "name": "Volume {level}%"

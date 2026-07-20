@@ -324,8 +324,26 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                 "levels",
                 "pause_groups",
                 "event_buttons",
+                "tests",
             ],
         )
+
+    # --- tests --------------------------------------------------------------
+
+    async def async_step_tests(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        return self.async_show_menu(step_id="tests", menu_options=["flash_test"])
+
+    async def async_step_flash_test(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Flash the appliance's front-panel LEDs — a visible comms test."""
+        try:
+            await self.config_entry.runtime_data.symetrix.async_flash()
+        except SymetrixError:
+            return self.async_abort(reason="cannot_connect")
+        return await self.async_step_tests()
 
     # --- connection ---------------------------------------------------------
 

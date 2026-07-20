@@ -30,7 +30,6 @@ SERVICE_CANCEL_EVENT = "cancel_event"
 EVENT_NAME_SCHEMA = vol.Schema({vol.Required("name"): str})
 
 PLATFORMS: list[Platform] = [
-    Platform.BUTTON,
     Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
@@ -164,6 +163,8 @@ def _async_prune_stale_entities(
             or unique_id.endswith("_volume_scene")
             or unique_id.endswith("_volume_level")
             or unique_id.endswith("_reset_volumes")
+            # flash button became a Tests option-menu action in 0.7.0
+            or unique_id.endswith("_flash_unit")
         ) and unique_id not in valid_ids
         if stale_level or stale_other:
             registry.async_remove(reg_entry.entity_id)
