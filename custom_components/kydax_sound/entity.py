@@ -28,7 +28,7 @@ class KydaxSoundEntity(Entity):
 
     @property
     def available(self) -> bool:
-        return self._hub.available
+        return bool(self._hub.available)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()

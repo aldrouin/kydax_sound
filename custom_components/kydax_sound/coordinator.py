@@ -84,7 +84,8 @@ class KydaxSoundHub:
             else None
         )
         # True once the appliance has answered; drives entity availability.
-        self.available = False
+        # None until the first poll so the first failure is logged too.
+        self.available: bool | None = None
 
         self.channels: dict[int, dict] = {
             channel["number"]: channel
@@ -108,6 +109,20 @@ class KydaxSoundHub:
 
     async def async_start(self) -> None:
         """Connect and start polling."""
+        _LOGGER.info(
+            "Starting: Symetrix at %s:%s, MusiSelect %s, %d channel(s), "
+            "%d level(s), %d pause group(s), %d event(s)",
+            self.entry.options[CONF_HOST],
+            self.entry.options.get(CONF_PORT, DEFAULT_PORT),
+            f"at {self.entry.options[CONF_MUSISELECT_HOST]}:"
+            f"{self.entry.options.get(CONF_MUSISELECT_PORT, DEFAULT_MUSISELECT_PORT)}"
+            if self.musiselect is not None
+            else "not configured",
+            len(self.channels),
+            len(self.levels),
+            len(self.pause_groups),
+            len(self.event_buttons),
+        )
         self._unsubs.append(
             async_track_time_interval(
                 self.hass, self._async_poll, timedelta(seconds=POLL_SECONDS)
@@ -352,7 +367,8 @@ class KydaxSoundHub:
             else:
                 await self.symetrix.async_ping()
         except SymetrixError as err:
-            if self.available:
+            # also logs on the very first failed poll (available is None)
+            if self.available is not False:
                 _LOGGER.warning("Symetrix appliance is unreachable: %s", err)
             self.available = False
         else:
