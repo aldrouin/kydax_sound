@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import logging
+from copy import deepcopy
+
 import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
@@ -16,9 +19,16 @@ from .const import (
     CONF_LEVELS,
     CONF_PAUSE_GROUPS,
     DEFAULT_LEVELS,
+    DEFAULT_VOLUME_50,
+    DEFAULT_VOLUME_100,
     DOMAIN,
 )
 from .coordinator import KydaxSoundHub
+
+_LOGGER = logging.getLogger(__name__)
+
+# options keys used by older versions, migrated away in _async_migrate_options
+_LEGACY_VOLUME_SCENES = "volume_scenes"
 
 SERVICE_SET_LEVEL = "set_level"
 SET_LEVEL_SCHEMA = vol.Schema(
@@ -43,6 +53,8 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: KydaxSoundConfigEntry
 ) -> bool:
     """Set up Kydax Sound from a config entry."""
+    _async_migrate_options(hass, entry)
+
     hub = KydaxSoundHub(hass, entry)
     entry.runtime_data = hub
 
@@ -55,6 +67,72 @@ async def async_setup_entry(
 
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
     return True
+
+
+@callback
+def _async_migrate_options(
+    hass: HomeAssistant, entry: KydaxSoundConfigEntry
+) -> None:
+    """Bring options saved by older versions up to the current schema.
+
+    Idempotent: it runs on every setup and only writes when something
+    actually changed, so entries created at any past version keep working
+    without being reconfigured.
+    """
+    options = dict(entry.options)
+    before = deepcopy(options)
+
+    legacy_scenes = options.pop(_LEGACY_VOLUME_SCENES, None)
+
+    # channels: {number, name, volume_50, volume_100}. Older versions stored
+    # a default percentage instead of the calibration, with the dB values
+    # living in volume scenes named after the percentages.
+    channels = []
+    for channel in options.get(CONF_CHANNELS, []):
+        channel = dict(channel)
+        channel.pop("default_pct", None)
+        for key, level, fallback in (
+            ("volume_50", 50, DEFAULT_VOLUME_50),
+            ("volume_100", 100, DEFAULT_VOLUME_100),
+        ):
+            if channel.get(key) is None:
+                channel[key] = _legacy_level_db(
+                    legacy_scenes, channel.get("number"), level, fallback
+                )
+        channels.append(channel)
+    if channels or CONF_CHANNELS in options:
+        options[CONF_CHANNELS] = channels
+
+    # events: the settle delay was removed once preset and command started
+    # going out back-to-back
+    events = []
+    for event in options.get(CONF_EVENT_BUTTONS, []):
+        event = dict(event)
+        event.pop("delay", None)
+        events.append(event)
+    options[CONF_EVENT_BUTTONS] = events
+
+    options.setdefault(CONF_LEVELS, DEFAULT_LEVELS)
+    options.setdefault(CONF_PAUSE_GROUPS, [])
+
+    if options != before:
+        _LOGGER.info("Migrated stored configuration to the current schema")
+        hass.config_entries.async_update_entry(entry, options=options)
+
+
+def _legacy_level_db(
+    scenes: list[dict] | None, number: int | None, level: int, fallback: float
+) -> float:
+    """Recover a channel's dB at a percentage from pre-0.2 volume scenes."""
+    for scene in scenes or []:
+        if str(scene.get("name", "")).strip() == str(level):
+            value = (scene.get("levels") or {}).get(str(number))
+            if value is not None:
+                try:
+                    return float(value)
+                except (TypeError, ValueError):
+                    break
+    return fallback
 
 
 @callback
