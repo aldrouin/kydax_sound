@@ -28,7 +28,10 @@ from .const import (
     DEFAULT_MUSISELECT_PORT,
     DEFAULT_PCT,
     DEFAULT_PORT,
+    DEFAULT_VOLUME_50,
+    DEFAULT_VOLUME_100,
     POLL_SECONDS,
+    channel_db_for_pct,
     channel_position_for_pct,
     signal_update,
 )
@@ -195,6 +198,18 @@ class KydaxSoundHub:
         state.is_on = False
 
     # --- volume levels -------------------------------------------------------
+
+    def level_values(self, level: int) -> dict[str, float | str]:
+        """The dB each channel plays at for a level, keyed by channel name."""
+        values: dict[str, float | str] = {}
+        for channel in self.channels.values():
+            db = channel_db_for_pct(
+                channel.get("volume_50", DEFAULT_VOLUME_50),
+                channel.get("volume_100", DEFAULT_VOLUME_100),
+                level,
+            )
+            values[channel["name"]] = "off" if db is None else round(db, 1)
+        return values
 
     @callback
     def seed_level(self, level: int) -> None:

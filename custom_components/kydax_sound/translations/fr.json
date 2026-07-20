@@ -203,6 +203,18 @@
       "event_action_required": "Indiquez au moins un préréglage ou une commande MusiSelect"
     }
   },
+  "services": {
+    "set_level": {
+      "name": "Régler le niveau de volume",
+      "description": "Règle chaque canal à son volume calibré pour un pourcentage. Tout pourcentage de 0 à 100 fonctionne, pas seulement les boutons de niveau configurés. Les canaux en pause sont ignorés.",
+      "fields": {
+        "level": {
+          "name": "Niveau",
+          "description": "Pourcentage de la plage de volume (0 = coupé)."
+        }
+      }
+    }
+  },
   "entity": {
     "button": {
       "flash_unit": {

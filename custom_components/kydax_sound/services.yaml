@@ -1,0 +1,12 @@
+set_level:
+  fields:
+    level:
+      required: true
+      example: 70
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+          unit_of_measurement: "%"
+          mode: box

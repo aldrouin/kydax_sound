@@ -203,6 +203,18 @@
       "event_action_required": "Set at least a preset or a MusiSelect command"
     }
   },
+  "services": {
+    "set_level": {
+      "name": "Set volume level",
+      "description": "Sets every channel to its calibrated volume for a percentage. Any percentage from 0 to 100 works, not just the configured level buttons. Paused channels are skipped.",
+      "fields": {
+        "level": {
+          "name": "Level",
+          "description": "Percentage of the volume range (0 = off)."
+        }
+      }
+    }
+  },
   "entity": {
     "button": {
       "flash_unit": {

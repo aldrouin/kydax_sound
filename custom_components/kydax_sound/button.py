@@ -77,5 +77,10 @@ class VolumeLevelButton(KydaxSoundEntity, ButtonEntity):
         self._attr_unique_id = f"{hub.entry.entry_id}_level_{level}"
         self._attr_translation_placeholders = {"level": str(level)}
 
+    @property
+    def extra_state_attributes(self) -> dict:
+        """The dB this level sends to each channel (dashboard visibility)."""
+        return {"level": self._level, "values": self._hub.level_values(self._level)}
+
     async def async_press(self) -> None:
         await self._hub.async_apply_level(self._level)

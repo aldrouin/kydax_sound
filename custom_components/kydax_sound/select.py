@@ -51,9 +51,17 @@ class KydaxSoundVolumeLevelSelect(KydaxSoundEntity, SelectEntity, RestoreEntity)
 
     @property
     def current_option(self) -> str | None:
-        if self._hub.active_level is None:
+        # the set_level service accepts any %, which may not be in the list
+        if self._hub.active_level not in self._hub.levels:
             return None
         return str(self._hub.active_level)
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        attrs: dict = {"active_level": self._hub.active_level}
+        if self._hub.active_level is not None:
+            attrs["values"] = self._hub.level_values(self._hub.active_level)
+        return attrs
 
     async def async_select_option(self, option: str) -> None:
         await self._hub.async_apply_level(int(option))
