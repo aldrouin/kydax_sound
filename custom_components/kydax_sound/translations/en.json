@@ -167,12 +167,10 @@
           "preset": "Symetrix preset",
           "command": "MusiSelect command",
           "duration": "Duration (song length)",
-          "return_preset": "Return preset",
-          "options": "Command choices (e.g. languages)"
+          "return_preset": "Return preset"
         },
         "data_description": {
-          "command": "For example: PACINI diffSpecial 1",
-          "options": "One per line as \"Label = command\", e.g. French = PACINI diffSpecial 1. When set, a selector entity lets you pick which one the event sends, and the single command above is ignored."
+          "command": "One command, e.g. PACINI diffSpecial 1. To offer a choice (such as the song language), write one per line as \"Label = command\", e.g. French = PACINI diffSpecial 1 and English = PACINI diffSpecial 2 — a selector then lets you pick which one this event sends."
         }
       },
       "edit_event": {
@@ -189,12 +187,10 @@
           "preset": "Symetrix preset",
           "command": "MusiSelect command",
           "duration": "Duration (song length)",
-          "return_preset": "Return preset",
-          "options": "Command choices (e.g. languages)"
+          "return_preset": "Return preset"
         },
         "data_description": {
-          "command": "For example: PACINI diffSpecial 1",
-          "options": "One per line as \"Label = command\", e.g. French = PACINI diffSpecial 1. When set, a selector entity lets you pick which one the event sends, and the single command above is ignored."
+          "command": "One command, e.g. PACINI diffSpecial 1. To offer a choice (such as the song language), write one per line as \"Label = command\", e.g. French = PACINI diffSpecial 1 and English = PACINI diffSpecial 2 — a selector then lets you pick which one this event sends."
         }
       },
       "remove_event": {
@@ -246,7 +242,7 @@
       "channels_required": "Select at least one channel",
       "invalid_levels": "Invalid levels: whole percentages between 0 and 100, separated by commas",
       "event_action_required": "Set at least a preset or a MusiSelect command",
-      "invalid_event_options": "Invalid choices: one \"Label = command\" per line"
+      "invalid_event_options": "Invalid command: a single command, or one \"Label = command\" per line"
     },
     "abort": {
       "cannot_connect": "Could not reach the appliance to run the test"
@@ -309,7 +305,7 @@
         "name": "Volume level"
       },
       "event_option": {
-        "name": "{event} choice"
+        "name": "{event} language"
       }
     },
     "sensor": {
