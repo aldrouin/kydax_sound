@@ -27,12 +27,12 @@ async def async_setup_entry(
 class FlashUnitButton(KydaxSoundEntity, ButtonEntity):
     """Flashes the appliance's front panel LEDs — a visible comms test.
 
-    Disabled by default: it stays listed on the integration's device page
-    and can be enabled there when needed, but is not an active entity.
+    Hidden by default: pressable from the integration's device page, but
+    kept off dashboards.
     """
 
     _attr_entity_category = EntityCategory.DIAGNOSTIC
-    _attr_entity_registry_enabled_default = False
+    _attr_entity_registry_visible_default = False
     _attr_translation_key = "flash_unit"
 
     def __init__(self, hub: KydaxSoundHub) -> None:
