@@ -13,7 +13,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import KydaxSoundConfigEntry
-from .const import CONF_EVENT_BUTTONS
+from .const import CONF_EVENT_BUTTONS, LABEL_EVENT_END, custom_label
 from .coordinator import KydaxSoundHub
 from .entity import KydaxSoundEntity
 
@@ -36,13 +36,19 @@ class EventEndSensor(KydaxSoundEntity, SensorEntity):
     """When the running event will finish; unknown while idle."""
 
     _attr_device_class = SensorDeviceClass.TIMESTAMP
-    _attr_translation_key = "event_end"
 
     def __init__(self, hub: KydaxSoundHub, event: dict) -> None:
         super().__init__(hub)
         self._event = event
         self._attr_unique_id = f"{hub.entry.entry_id}_event_end_{event['id']}"
-        self._attr_translation_placeholders = {"event": event["name"]}
+        custom = custom_label(
+            hub.entry.options, LABEL_EVENT_END, event=event["name"]
+        )
+        if custom:
+            self._attr_name = custom
+        else:
+            self._attr_translation_key = "event_end"
+            self._attr_translation_placeholders = {"event": event["name"]}
 
     @property
     def native_value(self) -> datetime | None:

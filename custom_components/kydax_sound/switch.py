@@ -15,7 +15,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import KydaxSoundConfigEntry
-from .const import CONF_CHANNELS, CONF_EVENT_BUTTONS, CONF_PAUSE_GROUPS
+from .const import (
+    CONF_CHANNELS,
+    CONF_EVENT_BUTTONS,
+    CONF_PAUSE_GROUPS,
+    LABEL_VOLUME_LEVEL,
+    custom_label,
+)
 from .coordinator import KydaxSoundHub
 from .entity import KydaxSoundEntity
 
@@ -98,14 +104,20 @@ class KydaxSoundLevelSwitch(KydaxSoundEntity, SwitchEntity):
     instead.
     """
 
-    _attr_translation_key = "volume_level"
     _attr_icon = "mdi:volume-medium"
 
     def __init__(self, hub: KydaxSoundHub, level: int) -> None:
         super().__init__(hub)
         self._level = level
         self._attr_unique_id = f"{hub.entry.entry_id}_level_{level}"
-        self._attr_translation_placeholders = {"level": str(level)}
+        custom = custom_label(
+            hub.entry.options, LABEL_VOLUME_LEVEL, level=level
+        )
+        if custom:
+            self._attr_name = custom
+        else:
+            self._attr_translation_key = "volume_level"
+            self._attr_translation_placeholders = {"level": str(level)}
 
     @property
     def is_on(self) -> bool:

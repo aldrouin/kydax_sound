@@ -46,6 +46,7 @@ from .const import (
     CONF_CHANNELS,
     CONF_CHANNEL_GROUPS,
     CONF_EVENT_BUTTONS,
+    CONF_LABELS,
     CONF_LANGUAGES,
     CONF_LEVELS,
     CONF_MUSISELECT_HOST,
@@ -58,6 +59,10 @@ from .const import (
     DOMAIN,
     FADER_MAX_DB,
     FADER_MIN_DB,
+    LABEL_EVENT_END,
+    LABEL_LANGUAGE,
+    LABEL_VOLUME_LEVEL,
+    LABEL_VOLUME_SELECT,
     channel_db_for_level,
     channel_level_table,
 )
@@ -568,9 +573,39 @@ class KydaxSoundOptionsFlow(OptionsFlow):
                 "pause_groups",
                 "event_buttons",
                 "languages",
+                "labels",
                 "backup",
                 "tests",
             ],
+        )
+
+    # --- entity labels --------------------------------------------------------
+
+    async def async_step_labels(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Rename the entities whose label comes from a translation."""
+        keys = (
+            LABEL_VOLUME_LEVEL,
+            LABEL_VOLUME_SELECT,
+            LABEL_LANGUAGE,
+            LABEL_EVENT_END,
+        )
+        if user_input is not None:
+            options = self._options
+            options[CONF_LABELS] = {
+                key: (user_input.get(key) or "").strip()
+                for key in keys
+                if (user_input.get(key) or "").strip()
+            }
+            return self._save(options)
+
+        schema = vol.Schema({vol.Optional(key): TextSelector() for key in keys})
+        return self.async_show_form(
+            step_id="labels",
+            data_schema=self.add_suggested_values_to_schema(
+                schema, self._options.get(CONF_LABELS, {})
+            ),
         )
 
     # --- MusiSelect programs (languages) --------------------------------------

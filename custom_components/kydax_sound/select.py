@@ -13,7 +13,13 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from . import KydaxSoundConfigEntry
-from .const import CONF_CHANNELS, CONF_EVENT_BUTTONS
+from .const import (
+    CONF_CHANNELS,
+    CONF_EVENT_BUTTONS,
+    LABEL_LANGUAGE,
+    LABEL_VOLUME_SELECT,
+    custom_label,
+)
 from .coordinator import KydaxSoundHub
 from .entity import KydaxSoundEntity
 
@@ -45,12 +51,16 @@ class KydaxSoundLanguageSelect(KydaxSoundEntity, SelectEntity, RestoreEntity):
     of its own sends the program chosen here.
     """
 
-    _attr_translation_key = "language"
     _attr_icon = "mdi:translate"
 
     def __init__(self, hub: KydaxSoundHub) -> None:
         super().__init__(hub)
         self._attr_unique_id = f"{hub.entry.entry_id}_language"
+        custom = custom_label(hub.entry.options, LABEL_LANGUAGE)
+        if custom:
+            self._attr_name = custom
+        else:
+            self._attr_translation_key = "language"
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -105,12 +115,16 @@ class KydaxSoundEventPresetSelect(KydaxSoundEntity, SelectEntity, RestoreEntity)
 class KydaxSoundVolumeLevelSelect(KydaxSoundEntity, SelectEntity, RestoreEntity):
     """Shows the last applied volume level; selecting one applies it."""
 
-    _attr_translation_key = "volume_level"
     _attr_icon = "mdi:volume-medium"
 
     def __init__(self, hub: KydaxSoundHub) -> None:
         super().__init__(hub)
         self._attr_unique_id = f"{hub.entry.entry_id}_volume_level"
+        custom = custom_label(hub.entry.options, LABEL_VOLUME_SELECT)
+        if custom:
+            self._attr_name = custom
+        else:
+            self._attr_translation_key = "volume_level"
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()

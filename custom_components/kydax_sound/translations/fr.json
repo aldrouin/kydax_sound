@@ -56,7 +56,8 @@
           "tests": "Tests",
           "channel_groups": "Groupes de canaux",
           "backup": "Importer / exporter",
-          "languages": "Programmes MusiSelect"
+          "languages": "Programmes MusiSelect",
+          "labels": "Noms des entités"
         }
       },
       "tests": {
@@ -362,6 +363,20 @@
           "add_language": "Ajouter un programme",
           "edit_language": "Modifier un programme",
           "remove_language": "Supprimer des programmes"
+        }
+      },
+      "labels": {
+        "title": "Noms des entités",
+        "description": "Renommez les entités dont le nom provient d'une traduction. Laissez un champ vide pour conserver le nom par défaut. {level} et {event} sont remplacés par le pourcentage du niveau et le nom de l'événement.",
+        "data": {
+          "volume_level": "Interrupteurs de niveau de volume",
+          "volume_select": "Liste des niveaux de volume",
+          "language": "Liste des programmes MusiSelect",
+          "event_end": "Capteurs de fin d'événement"
+        },
+        "data_description": {
+          "volume_level": "Par exemple : Volume {level} %",
+          "event_end": "Par exemple : Fin de {event}"
         }
       }
     },

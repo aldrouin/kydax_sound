@@ -56,7 +56,8 @@
           "tests": "Tests",
           "channel_groups": "Channel groups",
           "backup": "Import / export",
-          "languages": "MusiSelect programs"
+          "languages": "MusiSelect programs",
+          "labels": "Entity names"
         }
       },
       "tests": {
@@ -362,6 +363,20 @@
           "add_language": "Add a program",
           "edit_language": "Edit a program",
           "remove_language": "Remove programs"
+        }
+      },
+      "labels": {
+        "title": "Entity names",
+        "description": "Rename the entities whose name comes from a translation. Leave a field empty to keep the default. {level} and {event} are replaced by the level percentage and the event name.",
+        "data": {
+          "volume_level": "Volume level switches",
+          "volume_select": "Volume level selector",
+          "language": "MusiSelect program selector",
+          "event_end": "Event end sensors"
+        },
+        "data_description": {
+          "volume_level": "For example: Volume {level} %",
+          "event_end": "For example: End of {event}"
         }
       }
     },

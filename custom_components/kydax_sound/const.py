@@ -27,6 +27,26 @@ CONF_EVENT_BUTTONS = "event_buttons"  # [{id, name, preset, command, ...}]
 # [{label, command}]. One selector applies to every event that has no
 # command of its own.
 CONF_LANGUAGES = "languages"
+# optional custom names for the entities whose label comes from a
+# translation; empty values keep the translated default.
+# {"volume_level": "Volume {level} %", "volume_select": ..., "language": ...,
+#  "event_end": "Fin de {event}"}
+CONF_LABELS = "labels"
+LABEL_VOLUME_LEVEL = "volume_level"
+LABEL_VOLUME_SELECT = "volume_select"
+LABEL_LANGUAGE = "language"
+LABEL_EVENT_END = "event_end"
+
+
+def custom_label(options: dict, key: str, **placeholders) -> str | None:
+    """A configured label with its placeholders filled in, if one is set."""
+    template = (options.get(CONF_LABELS) or {}).get(key)
+    if not template:
+        return None
+    try:
+        return template.format(**placeholders)
+    except (KeyError, IndexError, ValueError):
+        return template
 
 DEFAULT_LEVELS = [0, 50, 60, 70, 80, 90, 100]
 DEFAULT_LEVEL_DB = -30.0

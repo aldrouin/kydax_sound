@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from copy import deepcopy
+from uuid import uuid4
 
 import voluptuous as vol
 
@@ -167,9 +168,49 @@ def _async_migrate_options(
     options.setdefault(CONF_PAUSE_GROUPS, [])
     options.setdefault(CONF_CHANNEL_GROUPS, [])
 
+    # every entry needs its own id: a missing or repeated one would make two
+    # entities claim the same unique id, and Home Assistant drops one of them
+    for key in (CONF_EVENT_BUTTONS, CONF_PAUSE_GROUPS, CONF_CHANNEL_GROUPS):
+        options[key] = _with_unique_ids(options.get(key, []), key)
+    # channels are identified by their controller number
+    seen_numbers: set[int] = set()
+    unique_channels = []
+    for channel in options.get(CONF_CHANNELS, []):
+        number = channel.get("number")
+        if number is None or number in seen_numbers:
+            _LOGGER.warning(
+                "Dropping channel with a missing or duplicate number: %s",
+                channel.get("name", number),
+            )
+            continue
+        seen_numbers.add(number)
+        unique_channels.append(channel)
+    if CONF_CHANNELS in options:
+        options[CONF_CHANNELS] = unique_channels
+
     if options != before:
         _LOGGER.info("Migrated stored configuration to the current schema")
         hass.config_entries.async_update_entry(entry, options=options)
+
+
+def _with_unique_ids(items: list[dict], label: str) -> list[dict]:
+    """Give every item a unique id, repairing missing or repeated ones."""
+    seen: set[str] = set()
+    repaired: list[dict] = []
+    for item in items:
+        item = dict(item)
+        item_id = item.get("id")
+        if not item_id or item_id in seen:
+            item["id"] = uuid4().hex[:8]
+            _LOGGER.warning(
+                "%s %r had a missing or duplicate id; assigned %s",
+                label,
+                item.get("name", "?"),
+                item["id"],
+            )
+        seen.add(item["id"])
+        repaired.append(item)
+    return repaired
 
 
 def _legacy_interpolated_db(
