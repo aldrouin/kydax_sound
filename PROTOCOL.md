@@ -91,6 +91,9 @@ Notes:
   specific dB level from a per-scene table (see old const.py VOLUME_VALUES);
   zone 7164 stayed at −33 dB in every scene above 50.
 - Pause switch "SALON_PRIVE" muted zone 7152.
+- Presets (from the old "fête" scripts): **LP 1 = special/birthday source
+  routing, LP 2 = normal source**. The birthday song window was 45 s
+  (script: fete service with preset 1 → 45 s delay → update_preset 2).
 
 ## MusiSelect (second appliance, documentation pending)
 
