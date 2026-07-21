@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
+from collections import deque
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,6 +45,7 @@ class MusiSelectClient:
         self._port = port
         self._transport: asyncio.DatagramTransport | None = None
         self._next_send_at: float = 0.0
+        self.history: deque[dict] = deque(maxlen=20)
 
     @property
     def connected(self) -> bool:
@@ -79,4 +82,7 @@ class MusiSelectClient:
             ) from err
         _LOGGER.debug(
             "MusiSelect %s:%s: sent %s", self._host, self._port, command
+        )
+        self.history.append(
+            {"at": time.strftime("%H:%M:%S"), "sent": command}
         )

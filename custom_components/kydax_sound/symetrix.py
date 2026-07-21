@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
+from collections import deque
 from collections.abc import Callable
 
 _LOGGER = logging.getLogger(__name__)
@@ -27,6 +29,7 @@ REQUEST_RETRIES = 3  # total attempts per command
 # serialized; this keeps a burst (e.g. a group slider writing every
 # channel) from outpacing the appliance's receive buffer.
 COMMAND_GAP = 0.02  # seconds
+HISTORY_SIZE = 60  # exchanges kept for the diagnostics download
 
 type PushCallback = Callable[[dict[int, int]], None]
 
@@ -70,6 +73,9 @@ class SymetrixClient:
         self._response: asyncio.Future[str] | None = None
         self._last_error: Exception | None = None
         self._next_send_at: float = 0.0
+        # rolling record of the last exchanges, shown in the diagnostics
+        # download so traffic can be inspected without enabling debug logs
+        self.history: deque[dict] = deque(maxlen=HISTORY_SIZE)
 
     @property
     def connected(self) -> bool:
@@ -127,8 +133,10 @@ class SymetrixClient:
                         command,
                         response.replace("\r", " | "),
                     )
+                    self._record(command, response.replace("\r", " | "), attempt)
                     return response
                 except TimeoutError:
+                    self._record(command, "TIMEOUT", attempt)
                     last_exc = self._last_error or TimeoutError(
                         f"no response to {command!r} (attempt {attempt}/{REQUEST_RETRIES})"
                     )
@@ -139,6 +147,17 @@ class SymetrixClient:
                 f"{self._host}:{self._port} did not answer {command!r} "
                 f"after {REQUEST_RETRIES} attempts"
             ) from last_exc
+
+    def _record(self, command: str, response: str, attempt: int) -> None:
+        """Keep one exchange for the diagnostics download."""
+        self.history.append(
+            {
+                "at": time.strftime("%H:%M:%S"),
+                "sent": command,
+                "received": response,
+                "attempt": attempt,
+            }
+        )
 
     def _on_datagram(self, data: bytes) -> None:
         text = data.decode("ascii", errors="replace").strip("\r\n\x00 ")

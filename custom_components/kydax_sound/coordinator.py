@@ -675,22 +675,45 @@ class KydaxSoundHub:
         self.channel_positions.update(positions)
         paused = self.paused_channels
         implied: list[float] = []
+        detail: list[str] = []
         for number, position in positions.items():
             channel = self.channels.get(number)
-            if channel is None or number in paused:
+            if channel is None:
+                continue
+            name = channel.get("name", number)
+            if number in paused:
+                detail.append(f"{name}: paused, ignored")
                 continue
             if position == 0:
                 implied.append(0.0)
+                detail.append(f"{name}: off -> 0%")
                 continue
             pct = channel_level_for_db(channel, position_to_db(position))
-            if pct is not None:
-                implied.append(pct)
+            if pct is None:
+                detail.append(f"{name}: same dB at every level, ignored")
+                continue
+            implied.append(pct)
+            detail.append(
+                f"{name}: {position_to_db(position):.1f} dB -> {pct:.1f}%"
+            )
         if implied:
+            average = sum(implied) / len(implied)
             # +0.01 absorbs the 16-bit position quantization so an exactly
             # applied level (e.g. 70) never floors down to 69
-            self.active_level = math.floor(
-                sum(implied) / len(implied) + 0.01
+            self.active_level = math.floor(average + 0.01)
+            _LOGGER.debug(
+                "Active level %s%% from the average of %.2f%% | %s",
+                self.active_level,
+                average,
+                "; ".join(detail),
             )
+            if self.active_level not in self.levels:
+                _LOGGER.info(
+                    "No level toggle matches %s%%: the channels are not all "
+                    "at the same level (%s)",
+                    self.active_level,
+                    "; ".join(detail),
+                )
 
     # --- helpers -----------------------------------------------------------
 
