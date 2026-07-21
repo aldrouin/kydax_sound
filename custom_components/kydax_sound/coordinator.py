@@ -684,13 +684,12 @@ class KydaxSoundHub:
             if number in paused:
                 detail.append(f"{name}: paused, ignored")
                 continue
-            if position == 0:
-                implied.append(0.0)
-                detail.append(f"{name}: off -> 0%")
-                continue
+            # A channel whose levels are all the same volume - typically
+            # -72 dB everywhere for a zone that is not used - says nothing
+            # about the active level, so it must not weigh on the average.
             pct = channel_level_for_db(channel, position_to_db(position))
             if pct is None:
-                detail.append(f"{name}: same dB at every level, ignored")
+                detail.append(f"{name}: same volume at every level, ignored")
                 continue
             implied.append(pct)
             detail.append(
