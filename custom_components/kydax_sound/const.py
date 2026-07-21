@@ -56,6 +56,9 @@ DEFAULT_LEVEL_DB = -30.0
 FADER_MIN_DB = -72.0
 FADER_MAX_DB = 12.0
 POSITION_MAX = 65535
+# how close a reading must be to a configured volume to count as that level;
+# generous enough to absorb the 16-bit rounding of the controller position
+LEVEL_MATCH_DB = 0.05
 
 
 def db_to_position(db: float) -> int:
@@ -134,8 +137,10 @@ def channel_position_for_level(channel: dict, level: float) -> int:
 def channel_level_for_db(channel: dict, db: float) -> float | None:
     """Inverse: the percentage a channel's current dB corresponds to.
 
-    None when the channel carries no information (every level configured to
-    the same dB, so its volume says nothing about the active level).
+    None when the channel cannot tell which level is active: either every
+    level is configured to the same volume, or the volume it is currently
+    playing is shared by several levels. Channels whose levels do differ
+    then decide the answer on their own.
     """
     table = channel_level_table(channel)
     if not table:
@@ -143,6 +148,14 @@ def channel_level_for_db(channel: dict, db: float) -> float | None:
     points = sorted(table.items())
     if len({d for _, d in points}) == 1:
         return None
+    # a volume configured for several levels cannot single one out
+    matches = [
+        level for level, value in points if abs(value - db) <= LEVEL_MATCH_DB
+    ]
+    if len(matches) > 1:
+        return None
+    if matches:
+        return float(matches[0])
     if db >= points[-1][1]:
         return float(points[-1][0])
     if db <= FADER_MIN_DB:
