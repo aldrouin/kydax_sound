@@ -40,7 +40,10 @@
       "channel_incomplete": "Indiquez un numéro de contrôleur et un nom (ou laissez les deux vides pour terminer)"
     },
     "abort": {
-      "already_configured": "Cet appareil est déjà configuré"
+      "already_configured": "Cet appareil est déjà configuré",
+      "invalid_file": "La configuration importée est invalide",
+      "invalid_channels": "La liste de canaux importée est invalide",
+      "invalid_levels": "La liste de niveaux importée est invalide"
     }
   },
   "options": {

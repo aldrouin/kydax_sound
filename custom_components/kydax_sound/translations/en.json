@@ -40,7 +40,10 @@
       "channel_incomplete": "Give both a controller number and a name (or leave both empty to finish)"
     },
     "abort": {
-      "already_configured": "This appliance is already configured"
+      "already_configured": "This appliance is already configured",
+      "invalid_file": "The imported configuration is invalid",
+      "invalid_channels": "The imported channel list is invalid",
+      "invalid_levels": "The imported level list is invalid"
     }
   },
   "options": {

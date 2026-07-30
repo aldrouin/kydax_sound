@@ -515,6 +515,36 @@ class KydaxSoundConfigFlow(ConfigFlow, domain=DOMAIN):
             description_placeholders={"count": str(len(self._channels))},
         )
 
+    async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
+        """Programmatic setup (kydax_bootstrap): the portable export payload
+        plus the connection keys the export deliberately leaves out."""
+        if not isinstance(import_data, dict):
+            return self.async_abort(reason="invalid_file")
+        payload = _strip_comments(import_data.get(DOMAIN, import_data))
+        if not isinstance(payload, dict) or not (payload.get(CONF_HOST) or "").strip():
+            return self.async_abort(reason="invalid_file")
+        problem = _validate_payload(payload)
+        if problem:
+            return self.async_abort(reason=problem)
+        host = payload[CONF_HOST].strip()
+        await self.async_set_unique_id(host)
+        self._abort_if_unique_id_configured()
+        options: dict[str, Any] = {
+            CONF_HOST: host,
+            CONF_PORT: payload.get(CONF_PORT, DEFAULT_PORT),
+            CONF_CHANNELS: [],
+            CONF_LEVELS: DEFAULT_LEVELS,
+            CONF_PAUSE_GROUPS: [],
+            CONF_EVENT_BUTTONS: [],
+        }
+        for key in PORTABLE_KEYS:
+            if payload.get(key) is not None:
+                options[key] = payload[key]
+        _clean_musiselect(options, payload)
+        return self.async_create_entry(
+            title=f"Symetrix {host}", data={}, options=options
+        )
+
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> KydaxSoundOptionsFlow:
