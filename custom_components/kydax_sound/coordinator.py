@@ -73,6 +73,12 @@ class KydaxSoundHub:
     heartbeat, entities subscribe via the dispatcher signal and never poll.
     """
 
+    # Consumed by kydax_test (duck-typed): available, channels, paused_channels,
+    # event_runs, symetrix (async_ping/async_flash/async_get/async_set/
+    # async_get_block/history) and musiselect. Bump when their signatures or
+    # semantics change.
+    TEST_API_VERSION = 1
+
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
         self.entry = entry
