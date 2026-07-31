@@ -18,4 +18,6 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          ignore: brands
+          # license: PolyForm Noncommercial is in LICENSE.md but GitHub cannot
+          # auto-detect it (SPDX NOASSERTION), so the check would never pass
+          ignore: brands license
