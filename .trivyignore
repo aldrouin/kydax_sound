@@ -1,0 +1,5 @@
+# Accepted findings ONLY. Every entry needs, on the line(s) above it:
+#   - the CVE / check id
+#   - a link to the tracking issue
+#   - an expiry date (YYYY-MM-DD) after which it must be re-reviewed
+# Reviewed in every PR that touches this file. Empty = nothing suppressed.

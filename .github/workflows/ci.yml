@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  secrets-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # real-breakage set only (syntax / undefined names); style is not gated
+      - uses: astral-sh/ruff-action@v3
+        with:
+          args: "check --select E9,F63,F7,F82"
+          src: custom_components
+
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Semgrep (python + owasp)
+        run: >-
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep
+          semgrep scan --error --config p/python --config p/owasp-top-ten custom_components
+
+  trivy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Trivy fs (deps, secrets, misconfig)
+        run: >-
+          docker run --rm -v "$PWD:/workspace" aquasec/trivy:latest fs /workspace
+          --scanners vuln,secret,misconfig --severity HIGH,CRITICAL --exit-code 1
+          --ignorefile /workspace/.trivyignore --quiet
+
+  import-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Import every module in the real HA image
+        run: >-
+          docker run --rm -v "$PWD/custom_components:/cc:ro"
+          ghcr.io/home-assistant/home-assistant:stable
+          python3 -c "import importlib, pkgutil, sys; sys.path.insert(0, '/cc');
+          import kydax_sound;
+          [importlib.import_module('kydax_sound.' + m.name) for m in pkgutil.iter_modules(kydax_sound.__path__)];
+          print('import OK')"
