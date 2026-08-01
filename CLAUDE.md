@@ -1,6 +1,6 @@
 # Kydax Sound
 
-Home Assistant custom integration (domain `kydax_sound`, GitHub repo `aldrouin/kydax_sound`; the local folder is still `C:\Workspace\kydax_symetrix`) controlling restaurant audio: a Symetrix Jupiter 8 DSP appliance (volumes, mutes, presets) and, planned, a "MusiSelect" source device (documentation to come from the user). Sibling of **kydax_light** (`C:\Workspace\kydax_light`, github.com/aldrouin/kydax_light) — that repo is the reference implementation; when in doubt, copy its patterns.
+Home Assistant custom integration (domain `kydax_sound`, GitHub repo `aldrouin/kydax_sound`; the local folder is still `C:\Workspace\kydax_sound`) controlling restaurant audio: a Symetrix Jupiter 8 DSP appliance (volumes, mutes, presets) and, planned, a "MusiSelect" source device (documentation to come from the user). Sibling of **kydax_light** (`C:\Workspace\kydax_light`, github.com/aldrouin/kydax_light) — that repo is the reference implementation; when in doubt, copy its patterns.
 
 ## Purpose / background
 
@@ -21,7 +21,7 @@ Replaces part of the user's old `kydax_dimmer`-era setup (`C:\Workspace\kydax`).
 - **No Python on this machine** (Windows). Use Node.js for helper scripts (JSON edits etc.).
 - Verify before every release inside the real HA image (Docker Desktop may need starting first):
   ```bash
-  docker run --rm -v "C:\Workspace\kydax_symetrix\custom_components:/cc:ro" ghcr.io/home-assistant/home-assistant:stable python3 -c "import sys; sys.path.insert(0,'/cc'); import kydax_sound.config_flow; print('OK')"
+  docker run --rm -v "C:\Workspace\kydax_sound\custom_components:/cc:ro" ghcr.io/home-assistant/home-assistant:stable python3 -c "import sys; sys.path.insert(0,'/cc'); import kydax_sound.config_flow; print('OK')"
   ```
   Import every module; add small logic asserts the same way kydax_light does.
 - CI: `.github/workflows/hassfest.yml` runs hassfest on push.
