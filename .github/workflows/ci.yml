@@ -13,19 +13,20 @@ jobs:
   secrets-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Gitleaks (full history)
+        run: >-
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest
+          git /repo --no-banner --redact
 
   ruff:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       # real-breakage set only (syntax / undefined names); style is not gated
-      - uses: astral-sh/ruff-action@v3
+      - uses: astral-sh/ruff-action@v4
         with:
           args: "check --select E9,F63,F7,F82"
           src: custom_components
@@ -33,7 +34,7 @@ jobs:
   sast:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Semgrep (python + owasp)
         run: >-
           docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep
@@ -42,7 +43,7 @@ jobs:
   trivy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Trivy fs (deps, secrets, misconfig)
         run: >-
           docker run --rm -v "$PWD:/workspace" aquasec/trivy:latest fs /workspace
@@ -52,7 +53,7 @@ jobs:
   import-smoke:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Import every module in the real HA image
         run: >-
           docker run --rm -v "$PWD/custom_components:/cc:ro"
